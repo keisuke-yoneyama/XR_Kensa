@@ -1,0 +1,1 @@
+export { mockInspections as inspections, getInspectionsByProjectId } from "@/lib/mock-data";

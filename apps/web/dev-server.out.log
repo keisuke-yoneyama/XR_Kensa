@@ -1,0 +1,15 @@
+
+> @steel-mr/web@0.1.0 dev
+> next dev --port 3102
+
+   ▲ Next.js 15.5.13
+   - Local:        http://localhost:3102
+   - Network:      http://172.20.10.5:3102
+
+ ✓ Starting...
+ ✓ Ready in 1498ms
+ ○ Compiling /projects ...
+ ✓ Compiled /projects in 1291ms (583 modules)
+ GET /projects 200 in 1630ms
+ ✓ Compiled /projects/[id] in 222ms (585 modules)
+ GET /projects/project-001 200 in 1020ms

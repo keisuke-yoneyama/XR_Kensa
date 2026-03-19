@@ -1,0 +1,1 @@
+export { mockProjects as projects, getProjectById } from "@/lib/mock-data";
