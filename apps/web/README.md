@@ -41,10 +41,15 @@ npm run dev
 
 `.env.local` に以下を設定してください（`.env.local.example` を参照）。
 
-| 変数名                          | 取得場所                                                   |
-| ------------------------------- | ---------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase ダッシュボード > Settings > API > Project URL     |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase ダッシュボード > Settings > API > anon public key |
+| 変数名                          | 取得場所                                                          | 用途                       |
+| ------------------------------- | ----------------------------------------------------------------- | -------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase ダッシュボード > Settings > API > Project URL            | 全クライアント共通          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase ダッシュボード > Settings > API > anon public key        | ブラウザ用クライアント      |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase ダッシュボード > Settings > API > service_role (secret)  | **サーバーサイド専用**      |
+
+> ⚠️ `SUPABASE_SERVICE_ROLE_KEY` は `NEXT_PUBLIC_` を絶対に付けないこと。
+> 付けるとブラウザに漏れ、全 RLS をバイパスされる危険があります。
+> `.env.local` を git にコミットしないこと（`.gitignore` で除外されているはず）。
 
 ---
 
@@ -295,11 +300,23 @@ create policy "users can update own inspections"
 - ヘッダー右上の「ログアウト」ボタンをクリック
 - `/login` にリダイレクトされる
 
+### ユーザー登録（管理者用）
+
+1. ログイン済みの状態で `http://localhost:3000/admin/users/new` にアクセス
+2. メールアドレス・パスワード・表示名（任意）を入力
+3. 「登録する」ボタンを押す
+4. 登録成功後、そのアカウントで `/login` からログインできる
+
+> **事前準備**: `.env.local` に `SUPABASE_SERVICE_ROLE_KEY` を設定すること（上記「環境変数」参照）。
+> 未設定の場合はエラーになります。
+
 ### アクセス制御
 
 - `/projects` 以下のすべてのページは **ログイン必須**
-- 未ログイン状態で `/projects` にアクセスすると `/login` に自動リダイレクト
-- ミドルウェア（`src/middleware.ts`）が `/projects/:path*` に一致するリクエストを保護
+- `/admin` 以下のすべてのページは **ログイン必須**
+- 未ログイン状態でアクセスすると `/login` に自動リダイレクト
+- ミドルウェア（`src/middleware.ts`）が `/projects/:path*` と `/admin/:path*` を保護
+- ⚠️ 現時点では「ログイン済みユーザーなら誰でも」`/admin` にアクセスできます。管理者専用に制限するにはロール管理の実装が必要です（フェーズ3以降）。
 
 ---
 
@@ -309,6 +326,7 @@ create policy "users can update own inspections"
 | --------------------------------- | ------------------------------------------------- |
 | `/`                               | ホーム                                            |
 | `/login`                          | ログイン画面（Email + Password）                  |
+| `/admin/users/new`                | ユーザー登録（**ログイン必須**、管理者用）        |
 | `/projects`                       | 工事一覧（**ログイン必須**、Supabase から取得）   |
 | `/projects/new`                   | 新規工事登録フォーム（**ログイン必須**）          |
 | `/projects/{id}`                  | 工事詳細（部材数も DB から取得）                  |
@@ -391,7 +409,7 @@ create policy "users can update own inspections"
 | projects テーブルの RLS           | ✅ 実装済み（owner_user_id 単位で絞り込み） |
 | members / inspections の RLS      | ✅ 実装済み（project_id 経由で親の owner 判定） |
 | ユーザー単位のデータ絞り込み      | ✅ 実装済み（owner_user_id = auth.uid()）   |
-| 新規ユーザー登録（アプリ内）      | 未実装（Supabase ダッシュボードから手動登録） |
+| 新規ユーザー登録（アプリ内）      | ✅ 実装済み（`/admin/users/new`、管理者用）  |
 
 ---
 

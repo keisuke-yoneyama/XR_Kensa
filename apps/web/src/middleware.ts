@@ -35,7 +35,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // 未ログインなら /login へリダイレクト
-  if (!user && request.nextUrl.pathname.startsWith("/projects")) {
+  const isProtected =
+    request.nextUrl.pathname.startsWith("/projects") ||
+    request.nextUrl.pathname.startsWith("/admin");
+
+  if (!user && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -45,5 +49,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/projects/:path*"],
+  matcher: ["/projects/:path*", "/admin/:path*"],
 };
