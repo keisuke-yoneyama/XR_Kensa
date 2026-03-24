@@ -1,5 +1,7 @@
 export function formatDate(value: string) {
-  return value;
+  if (!value) return "";
+  const [year, month, day] = value.split("-");
+  return `${year}年${month}月${day}日`;
 }
 
 export function formatProgress(done: number, total: number) {

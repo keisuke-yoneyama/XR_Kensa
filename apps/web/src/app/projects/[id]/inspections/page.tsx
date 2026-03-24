@@ -27,7 +27,7 @@ export default async function ProjectInspectionsPage({ params }: { params: Promi
           検査追加
         </Link>
       </div>
-      <InspectionList inspections={projectInspections} />
+      <InspectionList inspections={projectInspections} projectId={id} />
     </section>
   );
 }

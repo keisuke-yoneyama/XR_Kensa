@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Inspection, InspectionResult } from "@/types/inspection";
 
-// Supabase の inspections テーブルの行型
+// Supabase の inspections テーブルの行型（members を JOIN）
 type DbInspection = {
   id: string;
   project_id: string;
@@ -11,6 +11,7 @@ type DbInspection = {
   inspected_at: string;
   created_at: string;
   updated_at: string;
+  members: { member_kind: string } | null;
 };
 
 function toInspection(row: DbInspection): Inspection {
@@ -18,6 +19,7 @@ function toInspection(row: DbInspection): Inspection {
     id: row.id,
     projectId: row.project_id,
     memberId: row.member_id,
+    memberKind: row.members?.member_kind ?? "other",
     result: row.result as InspectionResult,
     inspectedAt: row.inspected_at,
   };
@@ -33,7 +35,7 @@ export async function getInspectionsByProjectId(
 ): Promise<Inspection[]> {
   const { data, error } = await client
     .from("inspections")
-    .select("*")
+    .select("*, members(member_kind)")
     .eq("project_id", projectId)
     .order("inspected_at", { ascending: false });
 
@@ -42,6 +44,20 @@ export async function getInspectionsByProjectId(
     return [];
   }
   return (data ?? []).map(toInspection);
+}
+
+export async function getInspectionById(
+  id: string,
+  client: SupabaseClient = supabase,
+): Promise<Inspection | undefined> {
+  const { data, error } = await client
+    .from("inspections")
+    .select("*, members(member_kind)")
+    .eq("id", id)
+    .single();
+
+  if (error) return undefined;
+  return toInspection(data);
 }
 
 export async function getInspectionCountByProjectId(

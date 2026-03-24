@@ -358,8 +358,9 @@ update auth.users
 | `/projects/{id}`                  | 工事詳細（部材数も DB から取得）                  |
 | `/projects/{id}/members`          | 部材一覧（Supabase から取得）                     |
 | `/projects/{id}/members/new`      | 部材追加フォーム                                  |
-| `/projects/{id}/inspections`      | 検査一覧（Supabase から取得）                     |
-| `/projects/{id}/inspections/new`  | 検査記録追加フォーム                              |
+| `/projects/{id}/inspections`                    | 検査一覧（部材種別・日付表示）                    |
+| `/projects/{id}/inspections/new`                | 検査記録追加フォーム                              |
+| `/projects/{id}/inspections/{inspectionId}/edit`| 検査記録編集フォーム                              |
 | `/members/{id}`                   | 部材詳細（Supabase から取得）                     |
 
 ### 未ログイン時の挙動
