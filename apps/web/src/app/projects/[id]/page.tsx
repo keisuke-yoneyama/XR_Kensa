@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getProjectById } from "@/lib/api/projects";
 import { getMemberCountByProjectId } from "@/lib/api/members";
+import { getInspectionCountByProjectId } from "@/lib/api/inspections";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [project, memberCount] = await Promise.all([
+  const [project, memberCount, inspectionCount] = await Promise.all([
     getProjectById(id),
     getMemberCountByProjectId(id),
+    getInspectionCountByProjectId(id),
   ]);
 
   if (!project) {
@@ -42,12 +44,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <p className="mt-2 text-lg font-semibold">{project.status}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">バージョン</p>
-          <p className="mt-2 text-lg font-semibold">{project.version}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">部材数</p>
           <p className="mt-2 text-lg font-semibold">{memberCount}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">検査件数</p>
+          <p className="mt-2 text-lg font-semibold">{inspectionCount}</p>
         </div>
       </div>
 
@@ -56,7 +58,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium shadow-sm hover:border-slate-400"
           href={`/projects/${id}/members`}
         >
-          メンバー一覧
+          部材一覧
         </Link>
         <Link
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium shadow-sm hover:border-slate-400"

@@ -2,7 +2,7 @@
 
 鉄骨FAB向け検査支援システムの Web 管理画面です。
 Next.js App Router + TypeScript + Tailwind CSS + Supabase で構成されています。
-現在はフェーズ1で、projects / members テーブルが Supabase に接続済みです。
+現在はフェーズ1で、projects / members / inspections テーブルが Supabase に接続済みです。
 
 ---
 
@@ -76,6 +76,17 @@ create table if not exists members (
   updated_at  timestamptz not null default now()
 );
 
+-- inspections テーブル（members に従属）
+create table if not exists inspections (
+  id           uuid        primary key default gen_random_uuid(),
+  project_id   uuid        not null references projects(id) on delete cascade,
+  member_id    uuid        not null references members(id) on delete cascade,
+  result       text        not null,             -- ok / ng / recheck
+  inspected_at date        not null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
 -- updated_at を自動更新するトリガー関数（共通）
 create or replace function update_updated_at()
 returns trigger as $$
@@ -93,10 +104,16 @@ create trigger members_updated_at
   before update on members
   for each row execute procedure update_updated_at();
 
+create trigger inspections_updated_at
+  before update on inspections
+  for each row execute procedure update_updated_at();
+
 -- インデックス
-create index if not exists idx_projects_project_code on projects(project_code);
-create index if not exists idx_projects_created_at   on projects(created_at desc);
-create index if not exists idx_members_project_id    on members(project_id);
+create index if not exists idx_projects_project_code    on projects(project_code);
+create index if not exists idx_projects_created_at      on projects(created_at desc);
+create index if not exists idx_members_project_id       on members(project_id);
+create index if not exists idx_inspections_project_id   on inspections(project_id);
+create index if not exists idx_inspections_member_id    on inspections(member_id);
 ```
 
 ### 2. RLS の設定
@@ -106,8 +123,9 @@ create index if not exists idx_members_project_id    on members(project_id);
 
 ```sql
 -- フェーズ1: RLS を無効化（認証実装後に見直す）
-alter table projects disable row level security;
-alter table members  disable row level security;
+alter table projects     disable row level security;
+alter table members      disable row level security;
+alter table inspections  disable row level security;
 ```
 
 ### status / kind の候補値
@@ -150,7 +168,8 @@ alter table members  disable row level security;
 | `/projects/{id}`                  | 工事詳細（部材数も DB から取得）   |
 | `/projects/{id}/members`          | 部材一覧（Supabase から取得）      |
 | `/projects/{id}/members/new`      | **部材追加フォーム**               |
-| `/projects/{id}/inspections`      | 検査一覧（現在はモック）           |
+| `/projects/{id}/inspections`      | 検査一覧（Supabase から取得）      |
+| `/projects/{id}/inspections/new`  | **検査記録追加フォーム**           |
 | `/members/{id}`                   | 部材詳細（Supabase から取得）      |
 
 ### 新規工事登録の確認手順
@@ -173,24 +192,16 @@ alter table members  disable row level security;
 
 ## 現在の DB 接続状況
 
-| リソース             | 状態                     |
-| -------------------- | ------------------------ |
-| projects テーブル    | ✅ Supabase 接続済み     |
-| members テーブル     | ✅ Supabase 接続済み     |
-| inspections テーブル | モックデータ（DB未接続） |
-
----
-
-## モックデータの場所
-
-`src/lib/mock-data.ts` に inspections のモックデータがあります。
-DB 未接続のページはこのファイルを参照しています。
+| リソース             | 状態                 |
+| -------------------- | -------------------- |
+| projects テーブル    | ✅ Supabase 接続済み |
+| members テーブル     | ✅ Supabase 接続済み |
+| inspections テーブル | ✅ Supabase 接続済み |
 
 ---
 
 ## 今後の予定（フェーズ1以降）
 
-- inspections テーブルの Supabase 接続
 - 認証（Supabase Auth）の実装
 - RLS の本格設定
 - BIM/IFC データ連携・AR/XR 連携

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Member } from "@/types/member";
+import { formatMemberKind, formatMemberStatus } from "@/lib/formatters";
 
 export function MemberTable({ members }: { members: Member[] }) {
   if (members.length === 0) {
-    return <p className="text-sm text-slate-500">メンバーがいません。</p>;
+    return <p className="text-sm text-slate-500">部材がまだ登録されていません。</p>;
   }
 
   return (
@@ -11,9 +12,9 @@ export function MemberTable({ members }: { members: Member[] }) {
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50 text-left text-slate-600">
           <tr>
-            <th className="px-4 py-3">Member ID</th>
-            <th className="px-4 py-3">Type</th>
-            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">部材 ID</th>
+            <th className="px-4 py-3">種別</th>
+            <th className="px-4 py-3">検査状況</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200">
@@ -24,8 +25,8 @@ export function MemberTable({ members }: { members: Member[] }) {
                   {member.id}
                 </Link>
               </td>
-              <td className="px-4 py-3">{member.kind}</td>
-              <td className="px-4 py-3">{member.status}</td>
+              <td className="px-4 py-3">{formatMemberKind(member.kind)}</td>
+              <td className="px-4 py-3">{formatMemberStatus(member.status)}</td>
             </tr>
           ))}
         </tbody>
