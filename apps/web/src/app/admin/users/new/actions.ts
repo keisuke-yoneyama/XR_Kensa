@@ -14,6 +14,7 @@ export async function createUser(
   email: string,
   password: string,
   displayName: string,
+  isAdmin: boolean,
 ): Promise<CreateUserResult> {
   try {
     const admin = createSupabaseAdminClient();
@@ -21,6 +22,8 @@ export async function createUser(
       email,
       password,
       user_metadata: displayName ? { display_name: displayName } : undefined,
+      // app_metadata はユーザー自身が書き換えられないため、ロール管理に適切
+      app_metadata: isAdmin ? { role: "admin" } : { role: "member" },
       email_confirm: true, // 管理者作成のため確認メールをスキップ
     });
 

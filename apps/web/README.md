@@ -302,21 +302,47 @@ create policy "users can update own inspections"
 
 ### ユーザー登録（管理者用）
 
-1. ログイン済みの状態で `http://localhost:3000/admin/users/new` にアクセス
+> **前提**: `/admin/users/new` にアクセスするには `app_metadata.role = "admin"` が必要です。
+> 初回は下記「既存ユーザーに管理者権限を付与する」を先に実行してください。
+
+1. 管理者アカウントでログインした状態で `http://localhost:3000/admin/users/new` にアクセス
 2. メールアドレス・パスワード・表示名（任意）を入力
-3. 「登録する」ボタンを押す
-4. 登録成功後、そのアカウントで `/login` からログインできる
+3. 管理者として登録する場合は「管理者権限を付与する」チェックボックスをオンにする
+4. 「登録する」ボタンを押す
+5. 登録成功後、そのアカウントで `/login` からログインできる
 
 > **事前準備**: `.env.local` に `SUPABASE_SERVICE_ROLE_KEY` を設定すること（上記「環境変数」参照）。
 > 未設定の場合はエラーになります。
 
+### 既存ユーザーに管理者権限を付与する
+
+Supabase ダッシュボード > **SQL Editor** で以下を実行してください。
+
+```sql
+-- 対象ユーザーのメールアドレスを指定する
+update auth.users
+  set raw_app_meta_data = raw_app_meta_data || '{"role": "admin"}'::jsonb
+  where email = 'your-admin-email@example.com';
+```
+
+実行後、対象ユーザーは **ログアウト → 再ログイン** を行ってください（セッションを更新するため）。
+
+### ロール設計の考え方
+
+| ロール | `app_metadata.role` | `/admin` アクセス |
+| ------ | ------------------- | ----------------- |
+| 管理者 | `"admin"`           | ✅ 可能           |
+| 一般   | `"member"`          | ❌ `/projects` へリダイレクト |
+
+- `app_metadata` はユーザー自身が書き換えられない（service_role のみ変更可）
+- `user_metadata` はユーザー自身が `updateUser()` で書き換えられるため、ロール管理には使わない
+- ミドルウェア（`src/middleware.ts`）が `user.app_metadata?.role` を確認してリダイレクトを判定する
+
 ### アクセス制御
 
-- `/projects` 以下のすべてのページは **ログイン必須**
-- `/admin` 以下のすべてのページは **ログイン必須**
-- 未ログイン状態でアクセスすると `/login` に自動リダイレクト
+- `/projects` 以下: **ログイン必須**（未ログイン → `/login` にリダイレクト）
+- `/admin` 以下: **ログイン必須 かつ `app_metadata.role = "admin"` 必須**（非管理者 → `/projects` にリダイレクト）
 - ミドルウェア（`src/middleware.ts`）が `/projects/:path*` と `/admin/:path*` を保護
-- ⚠️ 現時点では「ログイン済みユーザーなら誰でも」`/admin` にアクセスできます。管理者専用に制限するにはロール管理の実装が必要です（フェーズ3以降）。
 
 ---
 
@@ -410,6 +436,7 @@ create policy "users can update own inspections"
 | members / inspections の RLS      | ✅ 実装済み（project_id 経由で親の owner 判定） |
 | ユーザー単位のデータ絞り込み      | ✅ 実装済み（owner_user_id = auth.uid()）   |
 | 新規ユーザー登録（アプリ内）      | ✅ 実装済み（`/admin/users/new`、管理者用）  |
+| /admin ルートの管理者専用ガード   | ✅ 実装済み（`app_metadata.role = "admin"` で判定） |
 
 ---
 

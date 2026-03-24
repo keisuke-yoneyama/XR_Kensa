@@ -34,15 +34,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 未ログインなら /login へリダイレクト
-  const isProtected =
-    request.nextUrl.pathname.startsWith("/projects") ||
-    request.nextUrl.pathname.startsWith("/admin");
+  const pathname = request.nextUrl.pathname;
 
-  if (!user && isProtected) {
+  // 未ログインなら /login へリダイレクト
+  if (!user && (pathname.startsWith("/projects") || pathname.startsWith("/admin"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // /admin はログイン済みでも app_metadata.role = "admin" のユーザーのみ許可
+  if (user && pathname.startsWith("/admin")) {
+    const isAdmin = user.app_metadata?.role === "admin";
+    if (!isAdmin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/projects";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

@@ -8,6 +8,7 @@ export default function NewUserPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -18,15 +19,17 @@ export default function NewUserPage() {
     setError(null);
     setSuccess(null);
 
-    const result = await createUser(email, password, displayName);
+    const result = await createUser(email, password, displayName, isAdmin);
 
     if (!result.success) {
       setError(result.error);
     } else {
-      setSuccess(`${result.email} を登録しました。このアカウントで /login からログインできます。`);
+      const roleLabel = isAdmin ? "管理者" : "一般ユーザー";
+      setSuccess(`${result.email}（${roleLabel}）を登録しました。このアカウントで /login からログインできます。`);
       setEmail("");
       setPassword("");
       setDisplayName("");
+      setIsAdmin(false);
     }
     setSubmitting(false);
   }
@@ -97,6 +100,24 @@ export default function NewUserPage() {
           />
         </div>
 
+        <div className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
+          <input
+            type="checkbox"
+            id="isAdmin"
+            checked={isAdmin}
+            onChange={(e) => setIsAdmin(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300"
+          />
+          <div>
+            <label htmlFor="isAdmin" className="block text-sm font-medium text-slate-700 cursor-pointer">
+              管理者権限を付与する
+            </label>
+            <p className="text-xs text-slate-500 mt-0.5">
+              オンにすると /admin ページへのアクセスが許可されます（app_metadata.role = "admin"）
+            </p>
+          </div>
+        </div>
+
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
@@ -109,11 +130,6 @@ export default function NewUserPage() {
           {submitting ? "登録中..." : "登録する"}
         </button>
       </form>
-
-      <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-        ⚠️ このページは管理用です。現時点ではログイン済みユーザーなら誰でもアクセスできます。
-        管理者専用に制限する場合はロール管理の実装が必要です（フェーズ3以降）。
-      </p>
     </section>
   );
 }
