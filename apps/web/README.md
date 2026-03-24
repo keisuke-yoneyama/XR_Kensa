@@ -116,19 +116,125 @@ create index if not exists idx_inspections_project_id   on inspections(project_i
 create index if not exists idx_inspections_member_id    on inspections(member_id);
 ```
 
-### 2. RLS の設定
+### 2. Supabase Auth の有効化
 
-**フェーズ1では認証が未実装のため、RLS を無効化してください。**
-認証を実装したタイミングで再設定が必要です。
+Supabase ダッシュボードで以下を確認・設定してください。
+
+1. **Authentication > Providers > Email** を開く
+2. **Enable Email provider** がオンになっていることを確認
+3. **Confirm email** は開発中は OFF でも動作します（OFF 推奨：確認メール不要になる）
+4. ユーザーを登録するには:
+   - Supabase ダッシュボード > **Authentication > Users > Add user** から手動追加
+   - またはアプリ側で `supabase.auth.signUp()` を実装して自動登録（今回は未実装）
+
+### 3. RLS の設定
+
+フェーズ1の認証実装に合わせて、`projects` テーブルに最小限の RLS を設定します。
+Supabase ダッシュボード > **SQL Editor** で以下を実行してください。
 
 ```sql
--- フェーズ1: RLS を無効化（認証実装後に見直す）
-alter table projects     disable row level security;
+-- ① projects テーブルの RLS を有効化
+alter table projects enable row level security;
+
+-- ② ログイン済みユーザーのみ SELECT 可
+create policy "authenticated users can select projects"
+  on projects
+  for select
+  to authenticated
+  using (true);
+
+-- ③ ログイン済みユーザーのみ INSERT 可
+create policy "authenticated users can insert projects"
+  on projects
+  for insert
+  to authenticated
+  with check (true);
+
+-- ④ ログイン済みユーザーのみ UPDATE 可
+create policy "authenticated users can update projects"
+  on projects
+  for update
+  to authenticated
+  using (true);
+```
+
+> **注意**: members / inspections は現時点では RLS 無効のままです。
+> 本格展開時に改めて設定してください。
+
+```sql
+-- members / inspections は現在 RLS 無効（フェーズ1）
 alter table members      disable row level security;
 alter table inspections  disable row level security;
 ```
 
-### status / kind の候補値
+---
+
+## 認証の使い方
+
+### ログイン
+
+1. `http://localhost:3000/login` にアクセス
+2. Supabase Auth に登録済みのメールアドレスとパスワードを入力
+3. 「ログイン」ボタンを押す
+4. 成功すると `/projects` にリダイレクトされる
+
+### ログイン状態の確認
+
+- ヘッダー右上にログイン中のメールアドレスと「ログアウト」ボタンが表示される
+- 未ログイン時はヘッダー右上に「ログイン」リンクが表示される
+
+### ログアウト
+
+- ヘッダー右上の「ログアウト」ボタンをクリック
+- `/login` にリダイレクトされる
+
+### アクセス制御
+
+- `/projects` 以下のすべてのページは **ログイン必須**
+- 未ログイン状態で `/projects` にアクセスすると `/login` に自動リダイレクト
+- ミドルウェア（`src/middleware.ts`）が `/projects/:path*` に一致するリクエストを保護
+
+---
+
+## 動作確認手順
+
+| URL                               | 内容                                              |
+| --------------------------------- | ------------------------------------------------- |
+| `/`                               | ホーム                                            |
+| `/login`                          | ログイン画面（Email + Password）                  |
+| `/projects`                       | 工事一覧（**ログイン必須**、Supabase から取得）   |
+| `/projects/new`                   | 新規工事登録フォーム（**ログイン必須**）          |
+| `/projects/{id}`                  | 工事詳細（部材数も DB から取得）                  |
+| `/projects/{id}/members`          | 部材一覧（Supabase から取得）                     |
+| `/projects/{id}/members/new`      | 部材追加フォーム                                  |
+| `/projects/{id}/inspections`      | 検査一覧（Supabase から取得）                     |
+| `/projects/{id}/inspections/new`  | 検査記録追加フォーム                              |
+| `/members/{id}`                   | 部材詳細（Supabase から取得）                     |
+
+### 未ログイン時の挙動
+
+- `/projects` にアクセス → `/login` に自動リダイレクト
+- ヘッダーに「ログイン」リンクが表示される
+
+### ログイン時の挙動
+
+- `/projects` にアクセス → 工事一覧が表示される
+- ヘッダーにメールアドレスと「ログアウト」ボタンが表示される
+- RLS が有効の場合、Supabase のクエリも認証済みロールで実行される
+
+### ローカルでの一連確認手順
+
+1. `npm run dev` で起動
+2. ブラウザで `/projects` にアクセス → `/login` にリダイレクトされることを確認
+3. Supabase Auth に登録済みのアカウントでログイン
+4. `/projects` に遷移し、工事一覧が表示されることを確認
+5. ヘッダーにメールアドレスと「ログアウト」ボタンが表示されることを確認
+6. 「ログアウト」をクリック → `/login` に遷移することを確認
+7. 再度 `/projects` にアクセス → `/login` にリダイレクトされることを確認
+
+---
+
+## status / kind の候補値
 
 **projects.status**
 
@@ -158,38 +264,6 @@ alter table inspections  disable row level security;
 
 ---
 
-## 動作確認手順
-
-| URL                               | 内容                               |
-| --------------------------------- | ---------------------------------- |
-| `/`                               | ホーム                             |
-| `/projects`                       | 工事一覧（Supabase から取得）      |
-| `/projects/new`                   | **新規工事登録フォーム**           |
-| `/projects/{id}`                  | 工事詳細（部材数も DB から取得）   |
-| `/projects/{id}/members`          | 部材一覧（Supabase から取得）      |
-| `/projects/{id}/members/new`      | **部材追加フォーム**               |
-| `/projects/{id}/inspections`      | 検査一覧（Supabase から取得）      |
-| `/projects/{id}/inspections/new`  | **検査記録追加フォーム**           |
-| `/members/{id}`                   | 部材詳細（Supabase から取得）      |
-
-### 新規工事登録の確認手順
-
-1. `/projects` を開く
-2. 右上の「新規工事登録」ボタンをクリック
-3. 工事名・工事コードを入力して「登録する」
-4. 一覧ページに戻り、登録した工事が表示されることを確認
-
-### 部材追加の確認手順
-
-1. `/projects/{id}` を開く（id は登録済み工事の UUID）
-2. 「メンバー一覧」をクリック
-3. 右上の「部材追加」をクリック
-4. 部材種別・検査状況を選んで「追加する」
-5. 一覧に戻り、追加した部材が表示されることを確認
-6. 工事詳細に戻ると「部材数」が更新されていることを確認
-
----
-
 ## 現在の DB 接続状況
 
 | リソース             | 状態                 |
@@ -200,8 +274,23 @@ alter table inspections  disable row level security;
 
 ---
 
-## 今後の予定（フェーズ1以降）
+## 現在の認証・RLS 実装状況
 
-- 認証（Supabase Auth）の実装
-- RLS の本格設定
+| 機能                              | 状態                                         |
+| --------------------------------- | -------------------------------------------- |
+| Email + Password ログイン         | ✅ 実装済み（`/login`）                      |
+| ログアウト                        | ✅ 実装済み（ヘッダーのボタン）              |
+| /projects ルートの認証ガード      | ✅ 実装済み（middleware.ts）                 |
+| projects テーブルの RLS           | 要設定（上記「RLS の設定」の SQL を実行）    |
+| members / inspections の RLS      | 未実装（フェーズ2以降）                      |
+| ユーザー単位のデータ絞り込み      | 未実装（owner_user_id カラム追加が必要）     |
+| 新規ユーザー登録（アプリ内）      | 未実装（Supabase ダッシュボードから手動登録） |
+
+---
+
+## 今後の予定（フェーズ2以降）
+
+- ユーザー単位でのデータ絞り込み（projects に `owner_user_id` カラム追加）
+- members / inspections への RLS 本格適用
+- アプリ内でのユーザー新規登録フォーム
 - BIM/IFC データ連携・AR/XR 連携

@@ -1,12 +1,14 @@
 import Link from "next/link";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProjectById } from "@/lib/api/projects";
 import { getMemberCountByProjectId } from "@/lib/api/members";
 import { getInspectionCountByProjectId } from "@/lib/api/inspections";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const client = await createSupabaseServerClient();
   const [project, memberCount, inspectionCount] = await Promise.all([
-    getProjectById(id),
+    getProjectById(id, client),
     getMemberCountByProjectId(id),
     getInspectionCountByProjectId(id),
   ]);

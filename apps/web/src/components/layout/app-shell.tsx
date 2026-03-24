@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
+import { AuthStatus } from "@/components/layout/auth-status";
 
-const links = [
-  { href: ROUTES.projects, label: "Projects" },
-  { href: ROUTES.login, label: "Login" },
-];
+const links = [{ href: ROUTES.projects, label: "Projects" }];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -15,12 +13,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-steel-500">steel-mr-inspection</p>
             <h1 className="text-lg font-semibold text-slate-900">Admin Web App</h1>
           </div>
-          <nav className="flex flex-wrap gap-4 text-sm text-slate-600">
+          <nav className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
             {links.map((link) => (
               <Link key={link.href} href={link.href}>
                 {link.label}
               </Link>
             ))}
+            <AuthStatus />
           </nav>
         </div>
       </header>

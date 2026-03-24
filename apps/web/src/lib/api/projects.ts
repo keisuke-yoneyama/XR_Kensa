@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Project } from "@/types/project";
 
 // Supabase の projects テーブルの行型
@@ -25,8 +26,12 @@ function toProject(row: DbProject): Project {
   };
 }
 
-export async function getProjects(): Promise<Project[]> {
-  const { data, error } = await supabase
+/**
+ * @param client - 省略時はブラウザ用クライアントを使用。
+ *                 サーバーコンポーネントから呼ぶ場合は createSupabaseServerClient() を渡すこと。
+ */
+export async function getProjects(client: SupabaseClient = supabase): Promise<Project[]> {
+  const { data, error } = await client
     .from("projects")
     .select("*")
     .order("created_at", { ascending: false });
@@ -38,8 +43,11 @@ export async function getProjects(): Promise<Project[]> {
   return (data ?? []).map(toProject);
 }
 
-export async function getProjectById(id: string): Promise<Project | undefined> {
-  const { data, error } = await supabase
+export async function getProjectById(
+  id: string,
+  client: SupabaseClient = supabase,
+): Promise<Project | undefined> {
+  const { data, error } = await client
     .from("projects")
     .select("*")
     .eq("id", id)

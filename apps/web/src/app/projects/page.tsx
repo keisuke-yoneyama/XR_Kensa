@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProjects } from "@/lib/api/projects";
 
 export default async function ProjectsPage() {
-  const projects = await getProjects();
+  const client = await createSupabaseServerClient();
+  const projects = await getProjects(client);
 
   return (
     <section className="space-y-6">
