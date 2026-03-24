@@ -2,12 +2,8 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 
 const links = [
-  { href: ROUTES.login, label: "Login" },
   { href: ROUTES.projects, label: "Projects" },
-  { href: ROUTES.projectDetail("project-001"), label: "Project detail" },
-  { href: ROUTES.projectMembers("project-001"), label: "Members" },
-  { href: ROUTES.projectInspections("project-001"), label: "Inspections" },
-  { href: ROUTES.memberDetail("member-001"), label: "Member detail" }
+  { href: ROUTES.login, label: "Login" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

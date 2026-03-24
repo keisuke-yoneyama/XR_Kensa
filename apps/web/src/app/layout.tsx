@@ -1,16 +1,17 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Steel MR Inspection Web",
-  description: "Minimal Next.js web app for project list and detail screens",
+  description: "鉄骨FAB向け検査支援システム",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body className="bg-slate-50 text-slate-900">
-        <main className="mx-auto min-h-screen max-w-4xl px-6 py-10">{children}</main>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

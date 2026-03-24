@@ -7,30 +7,30 @@ export const mockProjects: Project[] = [
     id: "project-001",
     code: "PJ-001",
     name: "Factory A steel inspection",
-    memberCount: 42,
-    inspectedCount: 18,
+    memberCount: 2,
+    inspectedCount: 2,
   },
   {
     id: "project-002",
     code: "PJ-002",
     name: "Warehouse B frame inspection",
-    memberCount: 30,
-    inspectedCount: 10,
+    memberCount: 1,
+    inspectedCount: 1,
   },
   {
     id: "project-003",
     code: "PJ-003",
     name: "Office C column check",
-    memberCount: 24,
-    inspectedCount: 22,
+    memberCount: 1,
+    inspectedCount: 1,
   },
   {
     id: "project-004",
     code: "PJ-004",
     name: "Plant D final inspection",
-    memberCount: 55,
-    inspectedCount: 31,
-  }
+    memberCount: 1,
+    inspectedCount: 0,
+  },
 ];
 
 export const mockMembers: Member[] = [
