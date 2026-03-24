@@ -127,42 +127,73 @@ Supabase ダッシュボードで以下を確認・設定してください。
    - Supabase ダッシュボード > **Authentication > Users > Add user** から手動追加
    - またはアプリ側で `supabase.auth.signUp()` を実装して自動登録（今回は未実装）
 
-### 3. RLS の設定
+### 3. RLS の設定（フェーズ2: ユーザー単位の絞り込み）
 
-フェーズ1の認証実装に合わせて、`projects` テーブルに最小限の RLS を設定します。
-Supabase ダッシュボード > **SQL Editor** で以下を実行してください。
+フェーズ2では `projects` に `owner_user_id` カラムを追加し、
+**ログイン中のユーザーが作成した projects のみ** read/write できるように RLS を設定します。
+
+Supabase ダッシュボード > **SQL Editor** で以下を**順番通りに**実行してください。
+
+#### ステップ 1: カラム追加
 
 ```sql
--- ① projects テーブルの RLS を有効化
+alter table projects
+  add column if not exists owner_user_id uuid references auth.users(id);
+```
+
+#### ステップ 2: 既存データの owner_user_id を埋める
+
+> **重要**: このステップを省略すると、既存レコードが `owner_user_id = NULL` のままになり、
+> 新 RLS 適用後に誰も見えなくなります。必ず実行してください。
+
+Supabase ダッシュボード > **Authentication > Users** からあなたのユーザー UUID をコピーし、
+`'<your-user-id>'` を置き換えて実行してください。
+
+```sql
+-- 既存レコードをすべて自分の UUID に紐付ける
+update projects
+  set owner_user_id = '<your-user-id>'
+  where owner_user_id is null;
+```
+
+#### ステップ 3: 古い policy を削除
+
+```sql
+drop policy if exists "authenticated users can select projects" on projects;
+drop policy if exists "authenticated users can insert projects" on projects;
+drop policy if exists "authenticated users can update projects" on projects;
+```
+
+#### ステップ 4: ユーザー単位の policy を作成
+
+```sql
+-- RLS が無効な場合は有効化（すでに有効なら不要だがべき等なので実行してよい）
 alter table projects enable row level security;
 
--- ② ログイン済みユーザーのみ SELECT 可
-create policy "authenticated users can select projects"
-  on projects
-  for select
+-- 自分が作成した projects のみ SELECT 可
+create policy "users can select own projects"
+  on projects for select
   to authenticated
-  using (true);
+  using (owner_user_id = auth.uid());
 
--- ③ ログイン済みユーザーのみ INSERT 可
-create policy "authenticated users can insert projects"
-  on projects
-  for insert
+-- INSERT 時に owner_user_id = ログイン中ユーザーであることを強制
+create policy "users can insert own projects"
+  on projects for insert
   to authenticated
-  with check (true);
+  with check (owner_user_id = auth.uid());
 
--- ④ ログイン済みユーザーのみ UPDATE 可
-create policy "authenticated users can update projects"
-  on projects
-  for update
+-- 自分が作成した projects のみ UPDATE 可
+create policy "users can update own projects"
+  on projects for update
   to authenticated
-  using (true);
+  using (owner_user_id = auth.uid());
 ```
 
 > **注意**: members / inspections は現時点では RLS 無効のままです。
 > 本格展開時に改めて設定してください。
 
 ```sql
--- members / inspections は現在 RLS 無効（フェーズ1）
+-- members / inspections は現在 RLS 無効（フェーズ2以降に対応予定）
 alter table members      disable row level security;
 alter table inspections  disable row level security;
 ```
@@ -281,16 +312,15 @@ alter table inspections  disable row level security;
 | Email + Password ログイン         | ✅ 実装済み（`/login`）                      |
 | ログアウト                        | ✅ 実装済み（ヘッダーのボタン）              |
 | /projects ルートの認証ガード      | ✅ 実装済み（middleware.ts）                 |
-| projects テーブルの RLS           | 要設定（上記「RLS の設定」の SQL を実行）    |
-| members / inspections の RLS      | 未実装（フェーズ2以降）                      |
-| ユーザー単位のデータ絞り込み      | 未実装（owner_user_id カラム追加が必要）     |
+| projects テーブルの RLS           | ✅ 実装済み（owner_user_id 単位で絞り込み） |
+| members / inspections の RLS      | 未実装（フェーズ3以降）                      |
+| ユーザー単位のデータ絞り込み      | ✅ 実装済み（owner_user_id = auth.uid()）   |
 | 新規ユーザー登録（アプリ内）      | 未実装（Supabase ダッシュボードから手動登録） |
 
 ---
 
-## 今後の予定（フェーズ2以降）
+## 今後の予定（フェーズ3以降）
 
-- ユーザー単位でのデータ絞り込み（projects に `owner_user_id` カラム追加）
-- members / inspections への RLS 本格適用
+- members / inspections への RLS 本格適用（`owner_user_id` または `project_id` 経由での絞り込み）
 - アプリ内でのユーザー新規登録フォーム
 - BIM/IFC データ連携・AR/XR 連携

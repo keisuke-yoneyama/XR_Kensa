@@ -23,11 +23,21 @@ export default function NewProjectPage() {
     setSubmitting(true);
     setError(null);
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("ログインが必要です。再度ログインしてください。");
+      setSubmitting(false);
+      return;
+    }
+
     const { error: dbError } = await supabase.from("projects").insert({
       project_name: name.trim(),
       project_code: code.trim(),
       status,
       version: version.trim() || "1.0",
+      owner_user_id: user.id,
     });
 
     if (dbError) {
