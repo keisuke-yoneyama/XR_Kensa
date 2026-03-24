@@ -41,9 +41,9 @@ npm run dev
 
 `.env.local` に以下を設定してください（`.env.local.example` を参照）。
 
-| 変数名 | 取得場所 |
-|--------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase ダッシュボード > Settings > API > Project URL |
+| 変数名                          | 取得場所                                                   |
+| ------------------------------- | ---------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase ダッシュボード > Settings > API > Project URL     |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase ダッシュボード > Settings > API > anon public key |
 
 ---
@@ -96,25 +96,25 @@ alter table projects disable row level security;
 
 ### status の候補値
 
-| 値 | 意味 |
-|----|------|
-| `draft` | 下書き |
-| `active` | 進行中 |
-| `on_hold` | 保留 |
-| `completed` | 完了 |
+| 値          | 意味   |
+| ----------- | ------ |
+| `draft`     | 下書き |
+| `active`    | 進行中 |
+| `on_hold`   | 保留   |
+| `completed` | 完了   |
 
 ---
 
 ## 動作確認手順
 
-| URL | 内容 |
-|-----|------|
-| `/` | ホーム |
-| `/projects` | 工事一覧（Supabase から取得） |
-| `/projects/new` | **新規工事登録フォーム** |
-| `/projects/{id}` | 工事詳細（Supabase から取得） |
-| `/projects/{id}/members` | メンバー一覧（現在はモック） |
-| `/projects/{id}/inspections` | 検査一覧（現在はモック） |
+| URL                          | 内容                          |
+| ---------------------------- | ----------------------------- |
+| `/`                          | ホーム                        |
+| `/projects`                  | 工事一覧（Supabase から取得） |
+| `/projects/new`              | **新規工事登録フォーム**      |
+| `/projects/{id}`             | 工事詳細（Supabase から取得） |
+| `/projects/{id}/members`     | メンバー一覧（現在はモック）  |
+| `/projects/{id}/inspections` | 検査一覧（現在はモック）      |
 
 ### 新規工事登録の確認手順
 
@@ -127,10 +127,10 @@ alter table projects disable row level security;
 
 ## 現在の DB 接続状況
 
-| リソース | 状態 |
-|----------|------|
-| projects テーブル | ✅ Supabase 接続済み |
-| members テーブル | モックデータ（DB未接続） |
+| リソース             | 状態                     |
+| -------------------- | ------------------------ |
+| projects テーブル    | ✅ Supabase 接続済み     |
+| members テーブル     | モックデータ（DB未接続） |
 | inspections テーブル | モックデータ（DB未接続） |
 
 ---
