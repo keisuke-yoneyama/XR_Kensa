@@ -9,7 +9,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     return (
       <section className="space-y-4">
         <Link className="inline-flex text-sm font-medium" href="/projects">
-          ← プロジェクト一覧
+          ← 工事一覧
         </Link>
         <p className="text-slate-600">プロジェクトが見つかりません（ID: {id}）</p>
       </section>
@@ -19,27 +19,34 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <section className="space-y-6">
       <Link className="inline-flex text-sm font-medium" href="/projects">
-        ← プロジェクト一覧
+        ← 工事一覧
       </Link>
 
       <div className="space-y-2">
         <p className="text-sm font-medium text-steel-700">Project detail</p>
         <h1 className="text-3xl font-semibold">{project.name}</h1>
-        <p className="text-sm text-slate-600">Project ID: {id}</p>
+        <p className="text-sm text-slate-600">ID: {id}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Project code</p>
+          <p className="text-sm text-slate-500">工事コード</p>
           <p className="mt-2 text-lg font-semibold">{project.code}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Members</p>
-          <p className="mt-2 text-lg font-semibold">{project.memberCount}</p>
+          <p className="text-sm text-slate-500">ステータス</p>
+          <p className="mt-2 text-lg font-semibold">{project.status}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Inspected</p>
-          <p className="mt-2 text-lg font-semibold">{project.inspectedCount}</p>
+          <p className="text-sm text-slate-500">バージョン</p>
+          <p className="mt-2 text-lg font-semibold">{project.version}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">検査済</p>
+          <p className="mt-2 text-lg font-semibold">
+            {project.inspectedCount}
+            <span className="ml-1 text-sm font-normal text-slate-400">（DB未集計）</span>
+          </p>
         </div>
       </div>
 
@@ -57,6 +64,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           検査一覧
         </Link>
       </div>
+
+      <p className="text-xs text-slate-400">
+        ※ メンバー・検査一覧はまだ DB 未接続のためモックデータを表示します。
+      </p>
     </section>
   );
 }
