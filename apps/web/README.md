@@ -2,7 +2,7 @@
 
 鉄骨FAB向け検査支援システムの Web 管理画面です。
 Next.js App Router + TypeScript + Tailwind CSS + Supabase で構成されています。
-現在はフェーズ1で、projects テーブルが Supabase に接続済みです。
+現在はフェーズ1で、projects / members テーブルが Supabase に接続済みです。
 
 ---
 
@@ -50,7 +50,7 @@ npm run dev
 
 ## Supabase セットアップ（初回のみ）
 
-### 1. projects テーブルを作成する
+### 1. テーブルを作成する
 
 Supabase ダッシュボード > **SQL Editor** を開き、以下の SQL を実行してください。
 
@@ -66,7 +66,17 @@ create table if not exists projects (
   updated_at   timestamptz not null default now()
 );
 
--- updated_at を自動更新するトリガー
+-- members テーブル（projects に従属）
+create table if not exists members (
+  id          uuid        primary key default gen_random_uuid(),
+  project_id  uuid        not null references projects(id) on delete cascade,
+  member_kind text        not null,              -- 部材種別: column / beam / brace / other
+  status      text        not null default 'pending', -- pending / in_progress / done
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- updated_at を自動更新するトリガー関数（共通）
 create or replace function update_updated_at()
 returns trigger as $$
 begin
@@ -79,9 +89,14 @@ create trigger projects_updated_at
   before update on projects
   for each row execute procedure update_updated_at();
 
--- 検索用インデックス
+create trigger members_updated_at
+  before update on members
+  for each row execute procedure update_updated_at();
+
+-- インデックス
 create index if not exists idx_projects_project_code on projects(project_code);
 create index if not exists idx_projects_created_at   on projects(created_at desc);
+create index if not exists idx_members_project_id    on members(project_id);
 ```
 
 ### 2. RLS の設定
@@ -92,9 +107,12 @@ create index if not exists idx_projects_created_at   on projects(created_at desc
 ```sql
 -- フェーズ1: RLS を無効化（認証実装後に見直す）
 alter table projects disable row level security;
+alter table members  disable row level security;
 ```
 
-### status の候補値
+### status / kind の候補値
+
+**projects.status**
 
 | 値          | 意味   |
 | ----------- | ------ |
@@ -103,18 +121,37 @@ alter table projects disable row level security;
 | `on_hold`   | 保留   |
 | `completed` | 完了   |
 
+**members.status**
+
+| 値            | 意味   |
+| ------------- | ------ |
+| `pending`     | 未着手 |
+| `in_progress` | 検査中 |
+| `done`        | 完了   |
+
+**members.member_kind**
+
+| 値       | 意味       |
+| -------- | ---------- |
+| `column` | 柱         |
+| `beam`   | 梁         |
+| `brace`  | ブレース   |
+| `other`  | その他     |
+
 ---
 
 ## 動作確認手順
 
-| URL                          | 内容                          |
-| ---------------------------- | ----------------------------- |
-| `/`                          | ホーム                        |
-| `/projects`                  | 工事一覧（Supabase から取得） |
-| `/projects/new`              | **新規工事登録フォーム**      |
-| `/projects/{id}`             | 工事詳細（Supabase から取得） |
-| `/projects/{id}/members`     | メンバー一覧（現在はモック）  |
-| `/projects/{id}/inspections` | 検査一覧（現在はモック）      |
+| URL                               | 内容                               |
+| --------------------------------- | ---------------------------------- |
+| `/`                               | ホーム                             |
+| `/projects`                       | 工事一覧（Supabase から取得）      |
+| `/projects/new`                   | **新規工事登録フォーム**           |
+| `/projects/{id}`                  | 工事詳細（部材数も DB から取得）   |
+| `/projects/{id}/members`          | 部材一覧（Supabase から取得）      |
+| `/projects/{id}/members/new`      | **部材追加フォーム**               |
+| `/projects/{id}/inspections`      | 検査一覧（現在はモック）           |
+| `/members/{id}`                   | 部材詳細（Supabase から取得）      |
 
 ### 新規工事登録の確認手順
 
@@ -123,6 +160,15 @@ alter table projects disable row level security;
 3. 工事名・工事コードを入力して「登録する」
 4. 一覧ページに戻り、登録した工事が表示されることを確認
 
+### 部材追加の確認手順
+
+1. `/projects/{id}` を開く（id は登録済み工事の UUID）
+2. 「メンバー一覧」をクリック
+3. 右上の「部材追加」をクリック
+4. 部材種別・検査状況を選んで「追加する」
+5. 一覧に戻り、追加した部材が表示されることを確認
+6. 工事詳細に戻ると「部材数」が更新されていることを確認
+
 ---
 
 ## 現在の DB 接続状況
@@ -130,21 +176,20 @@ alter table projects disable row level security;
 | リソース             | 状態                     |
 | -------------------- | ------------------------ |
 | projects テーブル    | ✅ Supabase 接続済み     |
-| members テーブル     | モックデータ（DB未接続） |
+| members テーブル     | ✅ Supabase 接続済み     |
 | inspections テーブル | モックデータ（DB未接続） |
 
 ---
 
 ## モックデータの場所
 
-`src/lib/mock-data.ts` に members / inspections のモックデータがあります。
+`src/lib/mock-data.ts` に inspections のモックデータがあります。
 DB 未接続のページはこのファイルを参照しています。
 
 ---
 
 ## 今後の予定（フェーズ1以降）
 
-- members テーブルの Supabase 接続
 - inspections テーブルの Supabase 接続
 - 認証（Supabase Auth）の実装
 - RLS の本格設定

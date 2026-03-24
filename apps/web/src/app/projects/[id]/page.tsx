@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { getProjectById } from "@/lib/api/projects";
+import { getMemberCountByProjectId } from "@/lib/api/members";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const project = await getProjectById(id);
+  const [project, memberCount] = await Promise.all([
+    getProjectById(id),
+    getMemberCountByProjectId(id),
+  ]);
 
   if (!project) {
     return (
@@ -42,11 +46,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <p className="mt-2 text-lg font-semibold">{project.version}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">検査済</p>
-          <p className="mt-2 text-lg font-semibold">
-            {project.inspectedCount}
-            <span className="ml-1 text-sm font-normal text-slate-400">（DB未集計）</span>
-          </p>
+          <p className="text-sm text-slate-500">部材数</p>
+          <p className="mt-2 text-lg font-semibold">{memberCount}</p>
         </div>
       </div>
 
@@ -64,10 +65,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           検査一覧
         </Link>
       </div>
-
-      <p className="text-xs text-slate-400">
-        ※ メンバー・検査一覧はまだ DB 未接続のためモックデータを表示します。
-      </p>
     </section>
   );
 }

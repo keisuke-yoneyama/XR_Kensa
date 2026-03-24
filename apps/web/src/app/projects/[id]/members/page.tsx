@@ -12,11 +12,19 @@ export default async function ProjectMembersPage({ params }: { params: Promise<{
       <Link className="inline-flex text-sm font-medium" href={`/projects/${id}`}>
         ← プロジェクト詳細
       </Link>
-      <PageHeader
-        eyebrow="Members"
-        title="メンバー一覧"
-        description={`プロジェクト ${id} のメンバー（${projectMembers.length} 件）`}
-      />
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="Members"
+          title="メンバー一覧"
+          description={`プロジェクト ${id} の部材（${projectMembers.length} 件）`}
+        />
+        <Link
+          href={`/projects/${id}/members/new`}
+          className="shrink-0 rounded-lg bg-steel-700 px-4 py-2 text-sm font-medium text-white no-underline"
+        >
+          部材追加
+        </Link>
+      </div>
       <MemberTable members={projectMembers} />
     </section>
   );
