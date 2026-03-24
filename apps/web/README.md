@@ -189,14 +189,90 @@ create policy "users can update own projects"
   using (owner_user_id = auth.uid());
 ```
 
-> **注意**: members / inspections は現時点では RLS 無効のままです。
-> 本格展開時に改めて設定してください。
+---
+
+### 4. RLS の設定（フェーズ2: members / inspections への展開）
+
+`members` と `inspections` は `project_id` を通じて親の `projects` を参照しています。
+そのため、`owner_user_id` カラムを子テーブルに追加せず、
+**project_id → projects.owner_user_id の JOIN** でオーナーを判定します。
+
+- 所有権は親の `projects` テーブルに一元管理される
+- 親の所有者を変えれば子は自動追従する
+- insert コードに `owner_user_id` を渡す必要がない
+
+Supabase ダッシュボード > **SQL Editor** で以下を実行してください。
 
 ```sql
--- members / inspections は現在 RLS 無効（フェーズ2以降に対応予定）
-alter table members      disable row level security;
-alter table inspections  disable row level security;
+-- members: project_id 経由で親プロジェクトのオーナーを確認
+alter table members enable row level security;
+
+create policy "users can select own members"
+  on members for select to authenticated
+  using (
+    exists (
+      select 1 from projects
+      where projects.id = members.project_id
+        and projects.owner_user_id = auth.uid()
+    )
+  );
+
+create policy "users can insert into own project members"
+  on members for insert to authenticated
+  with check (
+    exists (
+      select 1 from projects
+      where projects.id = project_id
+        and projects.owner_user_id = auth.uid()
+    )
+  );
+
+create policy "users can update own members"
+  on members for update to authenticated
+  using (
+    exists (
+      select 1 from projects
+      where projects.id = members.project_id
+        and projects.owner_user_id = auth.uid()
+    )
+  );
+
+-- inspections: 同様に project_id 経由で判定
+alter table inspections enable row level security;
+
+create policy "users can select own inspections"
+  on inspections for select to authenticated
+  using (
+    exists (
+      select 1 from projects
+      where projects.id = inspections.project_id
+        and projects.owner_user_id = auth.uid()
+    )
+  );
+
+create policy "users can insert into own project inspections"
+  on inspections for insert to authenticated
+  with check (
+    exists (
+      select 1 from projects
+      where projects.id = project_id
+        and projects.owner_user_id = auth.uid()
+    )
+  );
+
+create policy "users can update own inspections"
+  on inspections for update to authenticated
+  using (
+    exists (
+      select 1 from projects
+      where projects.id = inspections.project_id
+        and projects.owner_user_id = auth.uid()
+    )
+  );
 ```
+
+> **既存データ移行は不要です。** `owner_user_id` カラムを追加していないため、
+> SQL を実行するだけで RLS が有効になります。
 
 ---
 
@@ -313,7 +389,7 @@ alter table inspections  disable row level security;
 | ログアウト                        | ✅ 実装済み（ヘッダーのボタン）              |
 | /projects ルートの認証ガード      | ✅ 実装済み（middleware.ts）                 |
 | projects テーブルの RLS           | ✅ 実装済み（owner_user_id 単位で絞り込み） |
-| members / inspections の RLS      | 未実装（フェーズ3以降）                      |
+| members / inspections の RLS      | ✅ 実装済み（project_id 経由で親の owner 判定） |
 | ユーザー単位のデータ絞り込み      | ✅ 実装済み（owner_user_id = auth.uid()）   |
 | 新規ユーザー登録（アプリ内）      | 未実装（Supabase ダッシュボードから手動登録） |
 
@@ -321,6 +397,6 @@ alter table inspections  disable row level security;
 
 ## 今後の予定（フェーズ3以降）
 
-- members / inspections への RLS 本格適用（`owner_user_id` または `project_id` 経由での絞り込み）
-- アプリ内でのユーザー新規登録フォーム
+- アプリ内でのユーザー新規登録フォーム（現在は Supabase ダッシュボードから手動登録）
 - BIM/IFC データ連携・AR/XR 連携
+- inspections 入力・更新 UI の強化

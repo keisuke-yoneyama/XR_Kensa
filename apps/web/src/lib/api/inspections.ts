@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Inspection, InspectionResult } from "@/types/inspection";
 
 // Supabase の inspections テーブルの行型
@@ -22,8 +23,15 @@ function toInspection(row: DbInspection): Inspection {
   };
 }
 
-export async function getInspectionsByProjectId(projectId: string): Promise<Inspection[]> {
-  const { data, error } = await supabase
+/**
+ * @param client - 省略時はブラウザ用クライアントを使用。
+ *                 サーバーコンポーネントから呼ぶ場合は createSupabaseServerClient() を渡すこと。
+ */
+export async function getInspectionsByProjectId(
+  projectId: string,
+  client: SupabaseClient = supabase,
+): Promise<Inspection[]> {
+  const { data, error } = await client
     .from("inspections")
     .select("*")
     .eq("project_id", projectId)
@@ -36,8 +44,11 @@ export async function getInspectionsByProjectId(projectId: string): Promise<Insp
   return (data ?? []).map(toInspection);
 }
 
-export async function getInspectionCountByProjectId(projectId: string): Promise<number> {
-  const { count, error } = await supabase
+export async function getInspectionCountByProjectId(
+  projectId: string,
+  client: SupabaseClient = supabase,
+): Promise<number> {
+  const { count, error } = await client
     .from("inspections")
     .select("*", { count: "exact", head: true })
     .eq("project_id", projectId);

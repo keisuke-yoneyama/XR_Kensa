@@ -2,10 +2,12 @@ import Link from "next/link";
 import { MemberTable } from "@/components/members/member-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { getMembersByProjectId } from "@/lib/api/members";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function ProjectMembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const projectMembers = await getMembersByProjectId(id);
+  const client = await createSupabaseServerClient();
+  const projectMembers = await getMembersByProjectId(id, client);
 
   return (
     <section className="space-y-4">

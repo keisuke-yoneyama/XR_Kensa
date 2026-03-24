@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Member, MemberStatus } from "@/types/member";
 
 // Supabase の members テーブルの行型
@@ -20,8 +21,15 @@ function toMember(row: DbMember): Member {
   };
 }
 
-export async function getMembersByProjectId(projectId: string): Promise<Member[]> {
-  const { data, error } = await supabase
+/**
+ * @param client - 省略時はブラウザ用クライアントを使用。
+ *                 サーバーコンポーネントから呼ぶ場合は createSupabaseServerClient() を渡すこと。
+ */
+export async function getMembersByProjectId(
+  projectId: string,
+  client: SupabaseClient = supabase,
+): Promise<Member[]> {
+  const { data, error } = await client
     .from("members")
     .select("*")
     .eq("project_id", projectId)
@@ -34,8 +42,11 @@ export async function getMembersByProjectId(projectId: string): Promise<Member[]
   return (data ?? []).map(toMember);
 }
 
-export async function getMemberById(id: string): Promise<Member | undefined> {
-  const { data, error } = await supabase
+export async function getMemberById(
+  id: string,
+  client: SupabaseClient = supabase,
+): Promise<Member | undefined> {
+  const { data, error } = await client
     .from("members")
     .select("*")
     .eq("id", id)
@@ -45,8 +56,11 @@ export async function getMemberById(id: string): Promise<Member | undefined> {
   return toMember(data);
 }
 
-export async function getMemberCountByProjectId(projectId: string): Promise<number> {
-  const { count, error } = await supabase
+export async function getMemberCountByProjectId(
+  projectId: string,
+  client: SupabaseClient = supabase,
+): Promise<number> {
+  const { count, error } = await client
     .from("members")
     .select("*", { count: "exact", head: true })
     .eq("project_id", projectId);

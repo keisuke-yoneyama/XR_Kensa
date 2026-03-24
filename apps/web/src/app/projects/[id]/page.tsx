@@ -9,8 +9,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const client = await createSupabaseServerClient();
   const [project, memberCount, inspectionCount] = await Promise.all([
     getProjectById(id, client),
-    getMemberCountByProjectId(id),
-    getInspectionCountByProjectId(id),
+    getMemberCountByProjectId(id, client),
+    getInspectionCountByProjectId(id, client),
   ]);
 
   if (!project) {
