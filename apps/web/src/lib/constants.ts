@@ -6,4 +6,5 @@ export const ROUTES = {
   projectInspections: (id: string) => `/projects/${id}/inspections`,
   memberDetail: (id: string) => `/members/${id}`,
   viewer: "/viewer",
+  projectViewer: (id: string) => `/projects/${id}/viewer`,
 };

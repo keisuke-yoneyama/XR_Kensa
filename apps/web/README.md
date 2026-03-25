@@ -514,12 +514,51 @@ src/
       error-boundary.tsx          # React ErrorBoundary
 ```
 
+### プロジェクト別 3D ビューア
+
+各工事プロジェクトの詳細ページから 3D モデルを開けます。
+
+| URL                          | 内容                                       |
+| ---------------------------- | ------------------------------------------ |
+| `/projects/{id}/viewer`      | プロジェクト紐づけビューア（ログイン必須）  |
+
+**ナビゲーション**: `/projects/{id}` の「3D モデルを見る」ボタンから遷移できます。
+
+#### プロジェクトに GLB を紐づける手順
+
+1. GLB ファイルを `public/models/` に配置する（例: `public/models/sample.glb`）
+2. `src/lib/model-paths.ts` の `MODEL_PATHS` に project ID とパスを追記する
+
+```ts
+// src/lib/model-paths.ts
+const MODEL_PATHS: Record<string, string> = {
+  "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx": "/models/my-project.glb",
+};
+```
+
+- project ID は `/projects/{id}` の URL か Supabase ダッシュボードで確認できます
+- 未登録のプロジェクトはフォールバックとして `/models/sample.glb` を表示します
+
+#### Supabase Storage 連携への移行手順（次段階）
+
+`getModelPath()` が返す値を Storage URL に変えるだけで移行できます。
+
+```ts
+// 現在（ローカルファイル）
+return MODEL_PATHS[projectId] ?? null;
+
+// 移行後（Supabase Storage）
+const { data } = supabase.storage.from("models").getPublicUrl(`${projectId}.glb`);
+return data.publicUrl;
+```
+
+`GLBViewer` コンポーネント・viewer ページの変更は不要です。
+
 ### 今回未対応のこと
 
 - IFC ファイルのアップロード・変換処理
-- Supabase Storage からの GLB 読み込み
+- Supabase Storage からの GLB 読み込み（次段階）
 - 部材単位の紐づけ（member_id → 3D モデル対応）
-- プロジェクト別の GLB 管理 (`/projects/[id]/viewer`)
 - 複数モデルの切り替え UI
 
 ---

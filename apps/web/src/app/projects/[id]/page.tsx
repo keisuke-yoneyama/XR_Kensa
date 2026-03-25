@@ -68,6 +68,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         >
           検査一覧
         </Link>
+        <Link
+          className="rounded-lg border border-steel-500 bg-steel-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-steel-700"
+          href={`/projects/${id}/viewer`}
+        >
+          3D モデルを見る
+        </Link>
       </div>
     </section>
   );
