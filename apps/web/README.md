@@ -539,27 +539,86 @@ const MODEL_PATHS: Record<string, string> = {
 - project ID は `/projects/{id}` の URL か Supabase ダッシュボードで確認できます
 - 未登録のプロジェクトはフォールバックとして `/models/sample.glb` を表示します
 
-#### Supabase Storage 連携への移行手順（次段階）
+#### モデル URL の解決順
 
-`getModelPath()` が返す値を Storage URL に変えるだけで移行できます。
+viewer ページは以下の優先順で GLB の参照先を決定します。
 
-```ts
-// 現在（ローカルファイル）
-return MODEL_PATHS[projectId] ?? null;
-
-// 移行後（Supabase Storage）
-const { data } = supabase.storage.from("models").getPublicUrl(`${projectId}.glb`);
-return data.publicUrl;
+```
+1. Supabase Storage の署名付き URL（{project_id}.glb が存在する場合）
+2. src/lib/model-paths.ts のローカルパス設定（開発用フォールバック）
+3. /models/sample.glb（未登録時のサンプル表示）
 ```
 
-`GLBViewer` コンポーネント・viewer ページの変更は不要です。
+バナー表示でどのソースを使っているか確認できます。
+
+### Supabase Storage 連携
+
+GLB ファイルを Supabase Storage に置くと、viewer が自動で署名付き URL に切り替わります。
+
+#### 1. バケットを作成する
+
+Supabase ダッシュボード > **Storage** を開き、以下の設定でバケットを作成してください。
+
+| 項目 | 値 |
+| ---- | -- |
+| バケット名 | `models` |
+| Public | **オフ**（private バケット推奨） |
+
+#### 2. RLS ポリシーを設定する
+
+Private バケットでは、ログイン済みユーザーのみが読み取れるよう RLS を設定します。
+
+Supabase ダッシュボード > **Storage > Policies** で `models` バケットに以下を追加してください。
+
+```sql
+-- ログイン済みユーザーは models バケットを読み取り可能
+create policy "authenticated users can read models"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'models');
+```
+
+#### 3. GLB ファイルをアップロードする
+
+Supabase ダッシュボード > **Storage > models** から GLB をアップロードします。
+
+**ファイル名の規則**: `{project_id}.glb`
+
+```
+例: 65166a2e-213b-49f1-bae2-ca02a9fb72a8.glb
+```
+
+project ID は `/projects/{id}` の URL または Supabase ダッシュボードの `projects` テーブルで確認できます。
+
+#### 4. 動作確認
+
+```bash
+npm run dev
+# http://localhost:3000/projects/{id}/viewer を開く
+# バナーが表示されなければ Storage から正常に読み込めています
+```
+
+#### 仕組みと注意点
+
+- 署名付き URL はサーバーコンポーネントで発行（有効期限 1時間）
+- ページ読み込みのたびに新しい URL が発行されるため期限切れは発生しない
+- Storage にファイルがない場合は `console.warn` を出してローカル/サンプルにフォールバックする
+- Storage の RLS を「authenticated only」にしているため、未ログイン状態では取得できない
+
+#### 関連ファイル
+
+| ファイル | 役割 |
+| -------- | ---- |
+| `src/lib/storage/models.ts` | Storage から署名付き URL を取得するヘルパー |
+| `src/lib/model-paths.ts` | ローカル開発用フォールバックマッピング |
+| `src/app/projects/[id]/viewer/page.tsx` | Storage → ローカル → サンプル の順で解決 |
 
 ### 今回未対応のこと
 
 - IFC ファイルのアップロード・変換処理
-- Supabase Storage からの GLB 読み込み（次段階）
 - 部材単位の紐づけ（member_id → 3D モデル対応）
 - 複数モデルの切り替え UI
+- Storage へのアプリ内アップロード UI（現在はダッシュボードから手動）
 
 ---
 
