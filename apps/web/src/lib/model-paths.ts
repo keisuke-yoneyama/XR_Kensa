@@ -11,8 +11,10 @@
  *   2. 下の MODEL_PATHS に { "project-uuid": "/models/project-uuid.glb" } を追記する
  */
 const MODEL_PATHS: Record<string, string> = {
-  // 例: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx": "/models/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.glb",
+  "65166a2e-213b-49f1-bae2-ca02a9fb72a8":
+    "/models/65166a2e-213b-49f1-bae2-ca02a9fb72a8.glb",
 };
+// 例: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx": "/models/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.glb",
 
 /**
  * project ID に対応する GLB パスを返す。
