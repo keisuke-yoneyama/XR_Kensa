@@ -441,8 +441,93 @@ update auth.users
 
 ---
 
+## GLB サンプル表示（フェーズ2.5）
+
+Web 上で GLB 形式の 3D モデルを表示できる最小構成を追加しました。
+
+### 表示ページ
+
+| URL       | 内容                                  |
+| --------- | ------------------------------------- |
+| `/viewer` | GLB サンプルビューア（認証不要で確認可） |
+
+ホームページ (`/`) にビューアへのリンクボタンも追加しています。
+
+### 使用ライブラリ
+
+| パッケージ              | 用途                                              |
+| ----------------------- | ------------------------------------------------- |
+| `three`                 | WebGL 3D レンダリング基盤                         |
+| `@react-three/fiber`    | Three.js の React ラッパー（Canvas/宣言的 3D UI） |
+| `@react-three/drei`     | OrbitControls / useGLTF / Grid など便利な抽象     |
+
+**drei を選んだ理由**: `useGLTF`（GLB読み込み）・`OrbitControls`・`Html`（Canvas内DOM）・`Grid` などが1パッケージで揃い、最小コードで動作確認できるため。
+
+### GLB ファイルの置き場所
+
+```
+apps/web/
+  public/
+    models/
+      sample.glb   ← ここに配置する
+```
+
+- `public/models/` に `sample.glb` という名前で置くと、`/viewer` ページで読み込まれます
+- サンプルが無い場合は [Khronos glTF サンプル](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0) から `.glb` を入手してください
+- 大きなバイナリを git 管理しないよう、`*.glb` を `.gitignore` に追記することを推奨します
+
+詳細は `public/models/README.md` を参照してください。
+
+### ローカルでの確認手順
+
+```bash
+# 1. GLB ファイルを配置
+cp your-model.glb apps/web/public/models/sample.glb
+
+# 2. 開発サーバーを起動
+cd apps/web
+npm run dev
+
+# 3. ブラウザで開く
+# http://localhost:3000/viewer
+```
+
+### 読み込み失敗時に確認すべき点
+
+1. **ファイルが存在するか**: `public/models/sample.glb` が正しく配置されているか確認
+2. **ファイル形式**: `.glb`（バイナリ GLTF）であること（`.gltf` テキスト形式は別途対応が必要）
+3. **ブラウザコンソール**: 404 / CORS エラーが出ていないか確認
+4. **ファイルサイズ**: 極端に大きいファイルはブラウザが読み込めない場合があります
+
+画面上には「モデルの読み込みに失敗しました」とメッセージが表示されます。
+
+### コンポーネント構成
+
+```
+src/
+  app/
+    viewer/
+      page.tsx                    # /viewer ページ（サーバーコンポーネント）
+  components/
+    viewer/
+      glb-viewer.tsx              # GLBViewer クライアントコンポーネント
+      error-boundary.tsx          # React ErrorBoundary
+```
+
+### 今回未対応のこと
+
+- IFC ファイルのアップロード・変換処理
+- Supabase Storage からの GLB 読み込み
+- 部材単位の紐づけ（member_id → 3D モデル対応）
+- プロジェクト別の GLB 管理 (`/projects/[id]/viewer`)
+- 複数モデルの切り替え UI
+
+---
+
 ## 今後の予定（フェーズ3以降）
 
 - アプリ内でのユーザー新規登録フォーム（現在は Supabase ダッシュボードから手動登録）
 - BIM/IFC データ連携・AR/XR 連携
 - inspections 入力・更新 UI の強化
+- `/projects/[id]/viewer` へのビューア組み込み（プロジェクト別モデル管理）
+- Supabase Storage からの GLB 読み込み対応

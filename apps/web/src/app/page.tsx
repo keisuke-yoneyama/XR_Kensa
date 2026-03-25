@@ -11,12 +11,20 @@ export default function HomePage() {
         </p>
       </div>
 
-      <Link
-        className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium no-underline shadow-sm"
-        href="/projects"
-      >
-        Open project list
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium no-underline shadow-sm hover:bg-slate-50"
+          href="/projects"
+        >
+          Open project list
+        </Link>
+        <Link
+          className="inline-flex rounded-lg border border-steel-500 bg-steel-500 px-4 py-2 font-medium text-white no-underline shadow-sm hover:bg-steel-700"
+          href="/viewer"
+        >
+          3D モデルビューア（サンプル）
+        </Link>
+      </div>
     </section>
   );
 }
