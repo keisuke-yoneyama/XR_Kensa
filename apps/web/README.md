@@ -507,14 +507,21 @@ npm run dev
 src/
   app/
     viewer/
-      page.tsx                    # /viewer ページ（サーバーコンポーネント）
+      page.tsx                         # /viewer ページ（サーバーコンポーネント）
+    projects/[id]/viewer/
+      page.tsx                         # プロジェクトビューア（サーバーコンポーネント）
   components/
     viewer/
-      glb-viewer.tsx              # GLBViewer クライアントコンポーネント
-      error-boundary.tsx          # React ErrorBoundary
+      glb-viewer.tsx                   # GLBViewer クライアントコンポーネント
+      model-selector-viewer.tsx        # モデル切り替え UI クライアントコンポーネント
+      error-boundary.tsx               # React ErrorBoundary
+  lib/
+    model-paths.ts                     # project ID → ModelEntry[] マッピング
+    storage/
+      models.ts                        # Supabase Storage 署名付き URL 取得ヘルパー
 ```
 
-### プロジェクト別 3D ビューア
+### プロジェクト別 3D ビューア（複数モデル対応）
 
 各工事プロジェクトの詳細ページから 3D モデルを開けます。
 
@@ -524,32 +531,27 @@ src/
 
 **ナビゲーション**: `/projects/{id}` の「3D モデルを見る」ボタンから遷移できます。
 
-#### プロジェクトに GLB を紐づける手順
+#### プロジェクトに複数 GLB を登録する手順
 
-1. GLB ファイルを `public/models/` に配置する（例: `public/models/sample.glb`）
-2. `src/lib/model-paths.ts` の `MODEL_PATHS` に project ID とパスを追記する
+1. GLB ファイルを `public/models/` に配置する
+2. `src/lib/model-paths.ts` の `MODEL_LIST` に project ID と `ModelEntry[]` を追記する
 
 ```ts
 // src/lib/model-paths.ts
-const MODEL_PATHS: Record<string, string> = {
-  "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx": "/models/my-project.glb",
+const MODEL_LIST: Record<string, ModelEntry[]> = {
+  "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx": [
+    { label: "全体モデル", path: "/models/overall.glb" },
+    { label: "1階躯体",   path: "/models/floor1.glb" },
+    { label: "屋根伏図",  path: "/models/roof.glb" },
+  ],
 };
 ```
 
+- `label`: ビューア上部に表示されるボタン名
+- `path`: `public/` 配下のパス（将来は Storage URL に差し替え可能）
+- 1モデルの場合は切り替えボタンは表示されず、そのまま表示されます
+- 未登録のプロジェクトは「モデルが登録されていません」を表示します
 - project ID は `/projects/{id}` の URL か Supabase ダッシュボードで確認できます
-- 未登録のプロジェクトはフォールバックとして `/models/sample.glb` を表示します
-
-#### モデル URL の解決順
-
-viewer ページは以下の優先順で GLB の参照先を決定します。
-
-```
-1. Supabase Storage の署名付き URL（{project_id}.glb が存在する場合）
-2. src/lib/model-paths.ts のローカルパス設定（開発用フォールバック）
-3. /models/sample.glb（未登録時のサンプル表示）
-```
-
-バナー表示でどのソースを使っているか確認できます。
 
 ### Supabase Storage 連携
 
