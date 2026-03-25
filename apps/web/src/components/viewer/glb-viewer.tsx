@@ -9,7 +9,6 @@ import {
   Center,
   Html,
   useProgress,
-  Environment,
 } from "@react-three/drei";
 import { ErrorBoundary } from "./error-boundary";
 
@@ -72,7 +71,6 @@ export function GLBViewer({ modelPath }: GLBViewerProps) {
           <directionalLight position={[10, 10, 5]} intensity={1.2} />
           <Suspense fallback={<Loader />}>
             <Model url={modelPath} />
-            <Environment preset="city" />
           </Suspense>
           <OrbitControls makeDefault />
           <Grid
