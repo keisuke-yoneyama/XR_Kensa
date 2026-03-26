@@ -3,7 +3,7 @@ apps/web/node_modules/
 .next/
 dist/
 build/
-
+.claude/worktrees/
 # 環境変数（Supabase キーなどを含むため必ず除外）
 .env.local
 apps/web/.env.local
