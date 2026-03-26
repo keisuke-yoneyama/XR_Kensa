@@ -361,6 +361,7 @@ update auth.users
 | `/projects/{id}/inspections`                    | 検査一覧（部材種別・日付表示）                    |
 | `/projects/{id}/inspections/new`                | 検査記録追加フォーム                              |
 | `/projects/{id}/inspections/{inspectionId}/edit`| 検査記録編集フォーム                              |
+| `/projects/{id}/models`           | モデル管理（アップロード / 削除）                 |
 | `/members/{id}`                   | 部材詳細（Supabase から取得）                     |
 
 ### 未ログイン時の挙動
@@ -423,6 +424,8 @@ update auth.users
 | projects テーブル    | ✅ Supabase 接続済み |
 | members テーブル     | ✅ Supabase 接続済み |
 | inspections テーブル | ✅ Supabase 接続済み |
+| project_models テーブル | ✅ Supabase 接続済み（要 SQL 実行） |
+| Storage (models バケット) | ✅ 署名付き URL 連携済み（要バケット作成 + RLS 設定） |
 
 ---
 
@@ -508,17 +511,23 @@ src/
   app/
     viewer/
       page.tsx                         # /viewer ページ（サーバーコンポーネント）
-    projects/[id]/viewer/
-      page.tsx                         # プロジェクトビューア（サーバーコンポーネント）
+    projects/[id]/
+      viewer/
+        page.tsx                       # プロジェクトビューア（サーバーコンポーネント）
+      models/
+        page.tsx                       # モデル管理ページ（アップロード / 一覧）
+        actions.ts                     # アップロード / 削除サーバーアクション
+        upload-form.tsx                # アップロードフォーム（クライアント）
+        model-list.tsx                 # 登録済みモデル一覧（クライアント）
   components/
     viewer/
       glb-viewer.tsx                   # GLBViewer クライアントコンポーネント
       model-selector-viewer.tsx        # モデル切り替え UI クライアントコンポーネント
       error-boundary.tsx               # React ErrorBoundary
   lib/
-    model-paths.ts                     # project ID → ModelEntry[] マッピング
+    model-paths.ts                     # project ID → ModelEntry[] マッピング（レガシー fallback）
     storage/
-      models.ts                        # Supabase Storage 署名付き URL 取得ヘルパー
+      models.ts                        # DB 取得 + Storage 署名付き URL 生成ヘルパー
 ```
 
 ### プロジェクト別 3D ビューア（複数モデル対応）
@@ -553,81 +562,105 @@ const MODEL_LIST: Record<string, ModelEntry[]> = {
 - 未登録のプロジェクトは「モデルが登録されていません」を表示します
 - project ID は `/projects/{id}` の URL か Supabase ダッシュボードで確認できます
 
-### Supabase Storage 連携
+### Supabase Storage 連携（project_models テーブル方式）
 
-GLB ファイルを Supabase Storage に置くと、viewer が自動で署名付き URL に切り替わります。
+GLB ファイルを Supabase Storage に保存し、`project_models` テーブルでプロジェクトに紐づけて管理します。
+ビューアは DB にモデルが登録されていれば Storage の署名付き URL を使用し、未登録ならローカルファイルにフォールバックします。
 
-#### 1. バケットを作成する
+#### 1. project_models テーブルを作成する
 
-Supabase ダッシュボード > **Storage** を開き、以下の設定でバケットを作成してください。
+Supabase ダッシュボード > **SQL Editor** で `docs/db/003_project_models.sql` を実行してください。
+
+このSQLで以下が作成されます:
+- `project_models` テーブル（id, project_id, label, storage_path, display_order, created_at）
+- RLS ポリシー（プロジェクトオーナーのみ read / insert / delete 可）
+
+#### 2. Storage バケットを作成する
+
+Supabase ダッシュボード > **Storage** > **New bucket** で以下を作成してください。
 
 | 項目 | 値 |
 | ---- | -- |
 | バケット名 | `models` |
-| Public | **オフ**（private バケット推奨） |
+| Public | **オフ**（private） |
 
-#### 2. RLS ポリシーを設定する
+#### 3. Storage RLS ポリシーを設定する
 
-Private バケットでは、ログイン済みユーザーのみが読み取れるよう RLS を設定します。
+Supabase ダッシュボード > **SQL Editor** で `docs/db/004_storage_models_bucket.sql` を実行してください。
 
-Supabase ダッシュボード > **Storage > Policies** で `models` バケットに以下を追加してください。
+このSQLで以下のポリシーが作成されます:
+- プロジェクトオーナーのみアップロード / 読み取り / 削除可能
+- Storage パス規約: `{projectId}/{filename}.glb`（第1セグメントで所有者判定）
 
-```sql
--- ログイン済みユーザーは models バケットを読み取り可能
-create policy "authenticated users can read models"
-  on storage.objects for select
-  to authenticated
-  using (bucket_id = 'models');
-```
+#### 4. モデルをアップロードする
 
-#### 3. GLB ファイルをアップロードする
+**方法 A: アプリ内 UI（推奨）**
 
-Supabase ダッシュボード > **Storage > models** から GLB をアップロードします。
+1. `/projects/{id}/models` にアクセス
+2. モデル名（表示ラベル）を入力
+3. GLB ファイルを選択して「アップロード」
 
-**ファイル名の規則**: `{project_id}.glb`
+**方法 B: Supabase ダッシュボード**
 
-```
-例: 65166a2e-213b-49f1-bae2-ca02a9fb72a8.glb
-```
+1. Storage > models バケットに `{projectId}/` フォルダを作成
+2. フォルダ内に GLB ファイルをアップロード
+3. Table Editor > project_models にレコードを追加（project_id, label, storage_path, display_order）
 
-project ID は `/projects/{id}` の URL または Supabase ダッシュボードの `projects` テーブルで確認できます。
-
-#### 4. 動作確認
+#### 5. 動作確認
 
 ```bash
 npm run dev
 # http://localhost:3000/projects/{id}/viewer を開く
-# バナーが表示されなければ Storage から正常に読み込めています
+# アップロードしたモデルが表示されれば成功
 ```
 
-#### 仕組みと注意点
+#### 仕組み
+
+```
+/projects/[id]/viewer (サーバーコンポーネント)
+  ├─ project_models テーブルから一覧取得
+  ├─ レコードがあれば → Storage 署名付き URL を生成 → ModelSelectorViewer へ
+  └─ レコードがなければ → model-paths.ts のローカル定義にフォールバック
+```
 
 - 署名付き URL はサーバーコンポーネントで発行（有効期限 1時間）
-- ページ読み込みのたびに新しい URL が発行されるため期限切れは発生しない
-- Storage にファイルがない場合は `console.warn` を出してローカル/サンプルにフォールバックする
-- Storage の RLS を「authenticated only」にしているため、未ログイン状態では取得できない
+- ページ読み込みのたびに新しい URL が発行されるため、通常使用で期限切れは発生しない
+- Storage の RLS はプロジェクトオーナー単位で制御
+- フロントに秘密鍵は露出しない
 
 #### 関連ファイル
 
 | ファイル | 役割 |
 | -------- | ---- |
-| `src/lib/storage/models.ts` | Storage から署名付き URL を取得するヘルパー |
-| `src/lib/model-paths.ts` | ローカル開発用フォールバックマッピング |
-| `src/app/projects/[id]/viewer/page.tsx` | Storage → ローカル → サンプル の順で解決 |
+| `src/lib/storage/models.ts` | DB 取得 + Storage 署名付き URL 生成ヘルパー |
+| `src/lib/model-paths.ts` | ローカル開発用フォールバックマッピング（レガシー） |
+| `src/app/projects/[id]/viewer/page.tsx` | DB → Storage → ローカル の順で解決 |
+| `src/app/projects/[id]/models/page.tsx` | モデル管理ページ（アップロード / 削除 UI） |
+| `src/app/projects/[id]/models/actions.ts` | アップロード / 削除のサーバーアクション |
+| `docs/db/003_project_models.sql` | テーブル + RLS 作成 SQL |
+| `docs/db/004_storage_models_bucket.sql` | Storage RLS 作成 SQL |
 
-### 今回未対応のこと
+#### 注意事項
 
-- IFC ファイルのアップロード・変換処理
-- 部材単位の紐づけ（member_id → 3D モデル対応）
-- 複数モデルの切り替え UI
-- Storage へのアプリ内アップロード UI（現在はダッシュボードから手動）
+- `next.config.js` で `serverActions.bodySizeLimit` を `50mb` に設定済み（GLB アップロード用）
+- Storage のデフォルトファイルサイズ上限は 50MB。より大きなファイルが必要な場合は Supabase Dashboard で調整
+- CORS: Supabase Storage はデフォルトで CORS を許可。問題があれば Dashboard で設定
+- `storage.foldername()` 関数が Storage RLS で使用されている。Supabase のバージョンによっては未対応の可能性がある（未確認）
+
+### 今後未対応のこと（TODO）
+
+- IFC ファイルのアップロードと自動 GLB 変換
+- member 単位の 3D オブジェクト紐づけ
+- 検査結果の 3D オーバーレイ表示
+- AR / XR 実装
+- model_assets テーブルの本格設計（現在は project_models で最小構成）
+- model-paths.ts の完全削除（Storage 移行完了後）
 
 ---
 
 ## 今後の予定（フェーズ3以降）
 
-- アプリ内でのユーザー新規登録フォーム（現在は Supabase ダッシュボードから手動登録）
 - BIM/IFC データ連携・AR/XR 連携
 - inspections 入力・更新 UI の強化
-- `/projects/[id]/viewer` へのビューア組み込み（プロジェクト別モデル管理）
-- Supabase Storage からの GLB 読み込み対応
+- member 単位の 3D モデル紐づけ
+- model_assets テーブルへの本格移行
