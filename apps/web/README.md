@@ -293,6 +293,7 @@ create policy "users can update own inspections"
 ### ログイン状態の確認
 
 - ヘッダー右上にログイン中のメールアドレスと「ログアウト」ボタンが表示される
+- 管理者の場合は「管理」リンクも表示される（`/admin/users` へ遷移）
 - 未ログイン時はヘッダー右上に「ログイン」リンクが表示される
 
 ### ログアウト
@@ -344,6 +345,42 @@ update auth.users
 - `/admin` 以下: **ログイン必須 かつ `app_metadata.role = "admin"` 必須**（非管理者 → `/projects` にリダイレクト）
 - ミドルウェア（`src/middleware.ts`）が `/projects/:path*` と `/admin/:path*` を保護
 
+### ユーザー一覧（管理者用）
+
+管理者は `/admin/users` から登録済みユーザーの一覧を確認できます。
+
+- ヘッダーの「管理」リンクからアクセス可能（管理者にのみ表示）
+- メールアドレス、表示名、ロール（管理者 / 一般）、登録日を表示
+- 「+ 新規登録」ボタンから `/admin/users/new` に遷移可能
+
+### ユーザー管理の全体フロー
+
+```
+1. 初期セットアップ
+   Supabase Dashboard で最初のユーザーを作成
+   → SQL Editor で app_metadata.role = "admin" を付与
+
+2. 管理者によるユーザー追加
+   /admin/users/new でユーザーを作成（email, password, display_name, role）
+   → Supabase Auth にユーザーが登録される（メール確認不要）
+
+3. ユーザーのログイン
+   /login で email + password を入力
+   → セッション Cookie が設定される
+   → /projects にリダイレクト
+
+4. 業務データの所有権
+   /projects/new でプロジェクト作成時に owner_user_id = auth.uid() が設定される
+   → RLS により、自分が作成したプロジェクト・部材・検査のみ表示される
+
+5. ユーザー管理
+   /admin/users で登録済みユーザーの一覧を確認
+   /admin/users/new で新規ユーザーを追加
+```
+
+> **セルフサインアップは無効です。** 業務システムのため、ユーザーは管理者が作成します。
+> 一般公開向けのサインアップページはありません。
+
 ---
 
 ## 動作確認手順
@@ -352,6 +389,7 @@ update auth.users
 | --------------------------------- | ------------------------------------------------- |
 | `/`                               | ホーム                                            |
 | `/login`                          | ログイン画面（Email + Password）                  |
+| `/admin/users`                    | ユーザー一覧（**ログイン必須**、管理者用）        |
 | `/admin/users/new`                | ユーザー登録（**ログイン必須**、管理者用）        |
 | `/projects`                       | 工事一覧（**ログイン必須**、Supabase から取得）   |
 | `/projects/new`                   | 新規工事登録フォーム（**ログイン必須**）          |
@@ -440,6 +478,8 @@ update auth.users
 | members / inspections の RLS      | ✅ 実装済み（project_id 経由で親の owner 判定） |
 | ユーザー単位のデータ絞り込み      | ✅ 実装済み（owner_user_id = auth.uid()）   |
 | 新規ユーザー登録（アプリ内）      | ✅ 実装済み（`/admin/users/new`、管理者用）  |
+| ユーザー一覧（管理者用）          | ✅ 実装済み（`/admin/users`）                |
+| 管理者ナビゲーション              | ✅ 実装済み（ヘッダーに「管理」リンク表示）  |
 | /admin ルートの管理者専用ガード   | ✅ 実装済み（`app_metadata.role = "admin"` で判定） |
 
 ---

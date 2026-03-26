@@ -46,9 +46,19 @@ export function AuthStatus() {
     );
   }
 
+  const isAdmin = user.app_metadata?.role === "admin";
+
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-slate-500">{user.email}</span>
+      {isAdmin && (
+        <Link
+          href="/admin/users"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-100"
+        >
+          管理
+        </Link>
+      )}
       <button
         onClick={handleLogout}
         className="rounded-lg border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:bg-slate-50"
