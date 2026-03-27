@@ -7,7 +7,7 @@ FROM node:20-slim
 RUN apt-get update && \
     apt-get install -y --no-install-recommends wget unzip ca-certificates && \
     wget -q -O /tmp/ifcopenshell.zip \
-      "https://github.com/IfcOpenShell/IfcOpenShell/releases/download/ifcopenshell-python-413/IfcConvert-v0.8.1-90b4c27-linux64.zip" && \
+      "https://s3.amazonaws.com/ifcopenshell-builds/IfcConvert-v0.8.5-a51b2c5-linux64.zip" && \
     unzip /tmp/ifcopenshell.zip -d /tmp/ifcconvert && \
     cp /tmp/ifcconvert/IfcConvert /usr/local/bin/IfcConvert && \
     chmod +x /usr/local/bin/IfcConvert && \
