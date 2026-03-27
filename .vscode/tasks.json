@@ -2,11 +2,11 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "dev:sweet-euclid",
+      "label": "dev:condescending-vaughan",
       "type": "shell",
       "command": "npm run dev",
       "options": {
-        "cwd": "C:\\keisuke\\XR_Kensa\\.claude\\worktrees\\sweet-euclid\\apps\\web"
+        "cwd": "C:\\keisuke\\XR_Kensa\\.claude\\worktrees\\condescending-vaughan\\apps\\web"
       },
       "problemMatcher": [],
       "isBackground": true,
