@@ -24,7 +24,7 @@ WORKDIR /app
 
 # 依存インストール
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 # ソースコードのビルド
 COPY tsconfig.json ./
