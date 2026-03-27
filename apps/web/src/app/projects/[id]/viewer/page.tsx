@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProjectById } from "@/lib/api/projects";
 import { ModelSelectorViewer } from "@/components/viewer/model-selector-viewer";
 import { getModelList } from "@/lib/model-paths";
-import { getProjectModels, getSignedModelEntries } from "@/lib/storage/models";
+import { getModelAssets, getSignedModelAssetEntries } from "@/lib/storage/model-assets";
 
 export default async function ProjectViewerPage({
   params,
@@ -25,11 +25,11 @@ export default async function ProjectViewerPage({
     );
   }
 
-  // DB (project_models) → 署名付き URL を取得。未登録ならローカル fallback。
-  const dbModels = await getProjectModels(id, client);
+  // DB (model_assets) → 署名付き URL を取得。未登録ならローカル fallback。
+  const dbAssets = await getModelAssets(id, client);
   const models =
-    dbModels.length > 0
-      ? await getSignedModelEntries(dbModels, client)
+    dbAssets.length > 0
+      ? await getSignedModelAssetEntries(dbAssets, client)
       : getModelList(id);
 
   return (

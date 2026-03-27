@@ -23,7 +23,13 @@ export function ModelUploadForm({ projectId }: Props) {
     const result = await uploadModel(formData);
 
     if (result.success) {
-      setMessage({ type: "success", text: "アップロードが完了しました。" });
+      // ファイル種別に応じたメッセージ
+      const file = formData.get("file") as File | null;
+      const isIfc = file?.name.endsWith(".ifc");
+      const text = isIfc
+        ? "IFC ファイルをアップロードしました。GLB への変換を開始します。"
+        : "アップロードが完了しました。";
+      setMessage({ type: "success", text });
       formRef.current?.reset();
     } else {
       setMessage({ type: "error", text: result.error });
@@ -49,16 +55,19 @@ export function ModelUploadForm({ projectId }: Props) {
 
       <div>
         <label htmlFor="file" className="block text-sm font-medium text-slate-700">
-          GLB ファイル
+          モデルファイル（GLB / IFC）
         </label>
         <input
           id="file"
           name="file"
           type="file"
           required
-          accept=".glb"
+          accept=".glb,.ifc"
           className="mt-1 w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-steel-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-steel-700 hover:file:bg-steel-100"
         />
+        <p className="mt-1 text-xs text-slate-400">
+          GLB はそのまま表示されます。IFC はアップロード後に自動で GLB に変換されます。
+        </p>
       </div>
 
       {message && (

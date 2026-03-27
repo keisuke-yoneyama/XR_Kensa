@@ -462,7 +462,8 @@ update auth.users
 | projects テーブル    | ✅ Supabase 接続済み |
 | members テーブル     | ✅ Supabase 接続済み |
 | inspections テーブル | ✅ Supabase 接続済み |
-| project_models テーブル | ✅ Supabase 接続済み（要 SQL 実行） |
+| project_models テーブル | ⚠️ 非推奨（model_assets に移行中） |
+| model_assets テーブル   | ✅ Supabase 接続済み（要 SQL 実行: `docs/db/005_model_assets.sql`） |
 | Storage (models バケット) | ✅ 署名付き URL 連携済み（要バケット作成 + RLS 設定） |
 
 ---
@@ -687,20 +688,82 @@ npm run dev
 - CORS: Supabase Storage はデフォルトで CORS を許可。問題があれば Dashboard で設定
 - `storage.foldername()` 関数が Storage RLS で使用されている。Supabase のバージョンによっては未対応の可能性がある（未確認）
 
+### IFC アップロード + 自動 GLB 変換（model_assets 方式）
+
+IFC ファイルをアップロードすると、converter サービスが自動で GLB に変換し、既存の viewer で表示できるようになります。
+
+#### セットアップ
+
+1. **model_assets テーブルを作成する**
+
+   Supabase ダッシュボード > **SQL Editor** で `docs/db/005_model_assets.sql` を実行してください。
+
+2. **既存データを移行する**（project_models にデータがある場合）
+
+   `docs/db/006_migrate_project_models.sql` を実行してください。
+
+3. **環境変数を追加する**
+
+   `.env.local` に以下を追加:
+   ```
+   CONVERTER_SERVICE_URL=http://localhost:3001
+   CONVERTER_API_KEY=your-shared-secret-here
+   ```
+
+4. **converter サービスを起動する**
+
+   ```bash
+   cd converter
+   cp .env.example .env
+   # .env を編集して Supabase URL / service_role key / API key を設定
+   docker compose up --build
+   ```
+
+#### 使い方
+
+1. `/projects/{id}/models` でモデル名を入力し、`.ifc` ファイルを選択してアップロード
+2. IFC ファイルは Storage に保存され、model_assets に `conversion_status = 'pending'` で登録
+3. converter サービスが自動で GLB に変換し、完了時に `conversion_status = 'completed'` に更新
+4. ページをリロードすると、モデル一覧にステータスバッジが表示される
+5. 変換完了後、`/projects/{id}/viewer` で GLB を表示可能
+
+#### Storage パス規約
+
+```
+{projectId}/glb/{filename}.glb    ← 変換後 or 直接アップロードの GLB
+{projectId}/ifc/{filename}.ifc    ← 元 IFC ファイル
+```
+
+既存の Storage RLS は変更不要（第1セグメントが projectId のため）。
+
+#### 関連ファイル
+
+| ファイル | 役割 |
+| -------- | ---- |
+| `src/types/model-asset.ts` | ModelAsset 型定義 |
+| `src/lib/storage/model-assets.ts` | DB 取得 + Storage 署名付き URL 生成 |
+| `src/lib/api/converter.ts` | converter サービスへの HTTP 呼出し |
+| `src/app/api/conversion-callback/route.ts` | 変換完了コールバック API |
+| `src/app/projects/[id]/models/actions.ts` | アップロード / 削除サーバーアクション |
+| `docs/db/005_model_assets.sql` | model_assets テーブル + RLS |
+| `docs/db/006_migrate_project_models.sql` | project_models → model_assets 移行 |
+| `converter/` | IFC → GLB 変換サービス（Docker） |
+
 ### 今後未対応のこと（TODO）
 
-- IFC ファイルのアップロードと自動 GLB 変換
-- member 単位の 3D オブジェクト紐づけ
+- member 単位の 3D オブジェクト紐づけ（1部材 = 1メッシュ、将来は多対多拡張可能）
 - 検査結果の 3D オーバーレイ表示
 - AR / XR 実装
-- model_assets テーブルの本格設計（現在は project_models で最小構成）
 - model-paths.ts の完全削除（Storage 移行完了後）
+- project_models テーブルの削除（model_assets 移行完了後）
+- 変換完了のリアルタイム通知（Supabase Realtime）
+- converter の本番デプロイ先選定
 
 ---
 
 ## 今後の予定（フェーズ3以降）
 
+- member 単位の 3D オブジェクト紐づけ
+- 検査結果の 3D オーバーレイ表示
 - BIM/IFC データ連携・AR/XR 連携
 - inspections 入力・更新 UI の強化
-- member 単位の 3D モデル紐づけ
-- model_assets テーブルへの本格移行

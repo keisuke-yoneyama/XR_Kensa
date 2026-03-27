@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProjectById } from "@/lib/api/projects";
-import { getProjectModels } from "@/lib/storage/models";
+import { getModelAssets } from "@/lib/storage/model-assets";
 import { ModelUploadForm } from "./upload-form";
 import { ModelList } from "./model-list";
 
@@ -14,7 +14,7 @@ export default async function ProjectModelsPage({
   const client = await createSupabaseServerClient();
   const [project, models] = await Promise.all([
     getProjectById(id, client),
-    getProjectModels(id, client),
+    getModelAssets(id, client),
   ]);
 
   if (!project) {
