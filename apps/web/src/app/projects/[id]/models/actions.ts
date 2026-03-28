@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MODELS_BUCKET } from "@/lib/storage/model-assets";
@@ -35,9 +36,11 @@ export async function uploadModel(
     const client = await createSupabaseServerClient();
     const isIfc = ext === "ifc";
 
-    // Storage パス: {projectId}/glb/{filename} or {projectId}/ifc/{filename}
+    // Storage パス: {projectId}/glb/{uuid}.ext or {projectId}/ifc/{uuid}.ext
+    // 日本語など非ASCII文字を含むファイル名はSupabase Storageで使えないためUUIDに置換
     const subDir = isIfc ? "ifc" : "glb";
-    const storagePath = `${projectId}/${subDir}/${fileName}`;
+    const safeFileName = `${randomUUID()}.${ext}`;
+    const storagePath = `${projectId}/${subDir}/${safeFileName}`;
 
     // Storage にアップロード
     const { error: uploadError } = await client.storage
