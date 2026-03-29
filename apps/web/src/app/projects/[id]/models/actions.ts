@@ -1,15 +1,18 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { MODELS_BUCKET } from "@/lib/storage/models";
+import { MODELS_BUCKET } from "@/lib/storage/model-assets";
 
 export type UploadModelResult =
   | { success: true }
   | { success: false; error: string };
 
 /**
- * GLB ファイルを Supabase Storage にアップロードし、project_models にレコードを追加する。
+ * GLB または IFC ファイルをアップロードし、model_assets にレコードを追加する。
+ * - GLB: Storage に直接保存し、conversion_status = 'direct'
+ * - IFC: Storage に保存し、conversion_status = 'pending'。変換は converter サービスが行う。
  */
 export async function uploadModel(
   formData: FormData,
@@ -23,12 +26,21 @@ export async function uploadModel(
       return { success: false, error: "プロジェクトID、ラベル、ファイルは必須です。" };
     }
 
-    if (!file.name.endsWith(".glb")) {
-      return { success: false, error: "GLB ファイル（.glb）のみアップロードできます。" };
+    const fileName = file.name;
+    const ext = fileName.split(".").pop()?.toLowerCase();
+
+    if (ext !== "glb" && ext !== "ifc") {
+      return { success: false, error: "GLB（.glb）または IFC（.ifc）ファイルのみアップロードできます。" };
     }
 
     const client = await createSupabaseServerClient();
-    const storagePath = `${projectId}/${file.name}`;
+    const isIfc = ext === "ifc";
+
+    // Storage パス: {projectId}/glb/{uuid}.ext or {projectId}/ifc/{uuid}.ext
+    // 日本語など非ASCII文字を含むファイル名はSupabase Storageで使えないためUUIDに置換
+    const subDir = isIfc ? "ifc" : "glb";
+    const safeFileName = `${randomUUID()}.${ext}`;
+    const storagePath = `${projectId}/${subDir}/${safeFileName}`;
 
     // Storage にアップロード
     const { error: uploadError } = await client.storage
@@ -41,7 +53,7 @@ export async function uploadModel(
 
     // 既存の最大 display_order を取得
     const { data: existing } = await client
-      .from("project_models")
+      .from("model_assets")
       .select("display_order")
       .eq("project_id", projectId)
       .order("display_order", { ascending: false })
@@ -50,19 +62,43 @@ export async function uploadModel(
     const nextOrder = (existing?.[0]?.display_order ?? -1) + 1;
 
     // DB にレコード追加
-    const { error: dbError } = await client
-      .from("project_models")
-      .insert({
-        project_id: projectId,
-        label,
-        storage_path: storagePath,
-        display_order: nextOrder,
-      });
+    const insertData = {
+      project_id: projectId,
+      label,
+      glb_path: isIfc ? null : storagePath,
+      ifc_path: isIfc ? storagePath : null,
+      original_filename: fileName,
+      file_size_bytes: file.size,
+      glb_size_bytes: isIfc ? null : file.size,
+      conversion_status: isIfc ? "pending" : "direct",
+      display_order: nextOrder,
+    };
+
+    const { data: insertedRow, error: dbError } = await client
+      .from("model_assets")
+      .insert(insertData)
+      .select("id")
+      .single();
 
     if (dbError) {
       // DB 挿入失敗時は Storage のファイルも削除を試みる
       await client.storage.from(MODELS_BUCKET).remove([storagePath]);
       return { success: false, error: `DB 登録失敗: ${dbError.message}` };
+    }
+
+    // IFC の場合は converter サービスに変換リクエストを送信
+    if (isIfc && insertedRow) {
+      try {
+        const { triggerConversion } = await import("@/lib/api/converter");
+        await triggerConversion({
+          assetId: insertedRow.id,
+          projectId,
+          ifcPath: storagePath,
+        });
+      } catch (convErr) {
+        // 変換リクエスト失敗は致命的ではない（後でリトライ可能）
+        console.error("[uploadModel] converter 呼出し失敗:", convErr);
+      }
     }
 
     revalidatePath(`/projects/${projectId}/viewer`);
@@ -75,7 +111,7 @@ export async function uploadModel(
 }
 
 /**
- * project_models のレコードと Storage ファイルを削除する。
+ * model_assets のレコードと Storage ファイルを削除する。
  */
 export async function deleteModel(
   modelId: string,
@@ -84,23 +120,26 @@ export async function deleteModel(
   try {
     const client = await createSupabaseServerClient();
 
-    // 削除対象の storage_path を取得
-    const { data: model, error: fetchError } = await client
-      .from("project_models")
-      .select("storage_path")
+    // 削除対象のパスを取得
+    const { data: asset, error: fetchError } = await client
+      .from("model_assets")
+      .select("glb_path, ifc_path")
       .eq("id", modelId)
       .single();
 
-    if (fetchError || !model) {
+    if (fetchError || !asset) {
       return { success: false, error: "モデルが見つかりません。" };
     }
 
-    // Storage からファイル削除
-    await client.storage.from(MODELS_BUCKET).remove([model.storage_path]);
+    // Storage からファイル削除（GLB と IFC 両方）
+    const pathsToRemove = [asset.glb_path, asset.ifc_path].filter(Boolean) as string[];
+    if (pathsToRemove.length > 0) {
+      await client.storage.from(MODELS_BUCKET).remove(pathsToRemove);
+    }
 
     // DB レコード削除
     const { error: dbError } = await client
-      .from("project_models")
+      .from("model_assets")
       .delete()
       .eq("id", modelId);
 
